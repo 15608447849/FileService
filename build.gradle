@@ -46,6 +46,8 @@ dependencies {
     // excel读取
     implementation 'org.apache.poi:poi-ooxml:3.7'
     implementation 'org.apache.poi:poi:3.9'
+    //google 图片处理
+    implementation 'net.coobird:thumbnailator:0.4.8'
 
 }
 
@@ -56,5 +58,5 @@ shadowJar {
     manifest {
         attributes 'Main-Class': 'server.LunchServer'
     }
-    dependencies {}
+//    dependencies {}
 }
