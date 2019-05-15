@@ -11,9 +11,11 @@ import server.servlet.iface.Mservlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import static bottle.util.FileUtils.checkFile;
 import static server.servlet.beans.result.Result.RESULT_CODE.EXCEPTION;
 import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
 
@@ -33,8 +35,17 @@ public class FileErgodic extends Mservlet {
         if (StringUtils.isEmpty(path)) path = FileUtils.SEPARATOR;
         try {
             path = WebProperties.get().rootPath + checkDirPath(path);
-            result.data = new FileErgodicOperation(path,isSub).start();
-            Log4j.info("遍历目录:"+ path +" list: "+ result.data);
+            //判断是否是一个文件
+            File file = new File(path);
+            if (file.isFile()){
+                result.data = true;
+                Log4j.info("存在文件:"+ path);
+            }else if (file.isDirectory()){
+                result.data = new FileErgodicOperation(path,isSub).start();
+                Log4j.info("遍历目录:"+ path +" list: "+ result.data);
+            }else{
+                result.data = false;
+            }
             result.value(SUCCESS);
         } catch (Exception e) {
             e.printStackTrace();
@@ -43,4 +54,5 @@ public class FileErgodic extends Mservlet {
         }
         writeJson(resp,result);
     }
+
 }

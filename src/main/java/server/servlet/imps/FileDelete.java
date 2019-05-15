@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 
+import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
+
 /**
  * @Author: leeping
  * @Date: 2019/4/1 17:25
@@ -35,10 +37,7 @@ public class FileDelete extends Mservlet {
                     }
             );
         }
-        Result result = new Result();
-        if (delList.size()>0){
-            result.data = delList;
-        }
-        writeJson(resp,result);
+
+        writeJson(resp,new Result().value(SUCCESS,delList));
     }
 }

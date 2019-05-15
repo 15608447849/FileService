@@ -33,35 +33,37 @@ public abstract class ApplicationPropertiesBase {
         baseType.put("long",new LongConvertImp());
     }
 
+
+
     private static final Properties properties = new Properties();
 
     public ApplicationPropertiesBase() {
         try {
-            String filePath = getPropertiesFilePath();
-            InputStream in = readPathProperties(filePath);
-            if (in==null) throw new Exception("配置文件获取失败: "+ filePath);
+            String filePath = getPropertiesFilePath(this.getClass());
+            InputStream in = readPathProperties(this.getClass(),filePath);
+            if (in==null) throw new RuntimeException("配置文件获取失败: "+ filePath);
             properties.clear();
             properties.load(in);
             in.close();
             autoReadPropertiesMapToField();
             initialization();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+           e.printStackTrace();
         }
     }
-
-    private InputStream readPathProperties(String filePath) throws FileNotFoundException {
+    //读取配置文件
+    private static InputStream readPathProperties(Class clazz,String filePath) throws FileNotFoundException {
         //优先从外部配置文件获取
-        String dirPath = new File(this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath()).getParent();
+        String dirPath = new File(clazz.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent();
         File file = new File(dirPath+"/resources"+filePath);
         if (file.exists()){
             return new FileInputStream(file);
         }
-        return this.getClass().getResourceAsStream( filePath );
+        return clazz.getResourceAsStream( filePath );
     }
 
-    private String getPropertiesFilePath() {
-        PropertiesFilePath annotation = this.getClass().getAnnotation(PropertiesFilePath.class);
+    private static String getPropertiesFilePath(Class clazz) {
+        PropertiesFilePath annotation = (PropertiesFilePath) clazz.getAnnotation(PropertiesFilePath.class);
         return annotation.value();
     }
 
@@ -92,6 +94,36 @@ public abstract class ApplicationPropertiesBase {
                 }
                 field.setAccessible(canAccess);//改回原来的访问方式
             }
+        }
+    }
+
+    public static void initStaticFields(Class clazz) {
+        try {
+            String filePath = getPropertiesFilePath(clazz);
+            InputStream in = readPathProperties(clazz,filePath);
+            if (in==null) throw new RuntimeException("配置文件获取失败: "+ filePath);
+            properties.clear();
+            properties.load(in);
+            Field[] fields = clazz.getDeclaredFields();
+            for (Field field : fields) {
+                PropertiesName name = field.getAnnotation(PropertiesName.class);
+                if (name==null) continue;
+                field.setAccessible(true);
+                String key = name.value();
+                String value = properties.getProperty(key);
+                if (value==null || value.length()==0) continue;
+                //获取属性类型
+                String type = field.getGenericType().toString();
+                if(baseType.containsKey(type)){
+                    try {
+                        baseType.get(type).setValue(clazz,field,value);
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

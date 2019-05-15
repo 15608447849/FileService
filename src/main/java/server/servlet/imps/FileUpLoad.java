@@ -40,14 +40,16 @@ public class FileUpLoad extends Mservlet {
 
         Result result = new Result();
 
-        //指定对应下标的文件的保存路径
+        //指定对应下标的文件保存路径
         ArrayList<String> pathList = checkDirPathByList(filterData(req.getHeader("specify-path")));
 
-        //指定对应下标的文件的保存文件名
+        //指定对应下标的文件保存文件名
         ArrayList<String> fileNameList = filterData( req.getHeader("specify-filename"));
 
-        //指定对应下标的文件的是否保存成md5文件名
+        //指定对应下标的文件是否保存成md5文件名
         ArrayList<String> fileSaveMD5 = filterData(req.getHeader("save-md5"));
+
+        //指定对应下标的文件是否设置定时删除时间,单位秒 ,0秒 不删除
 
         try {
 

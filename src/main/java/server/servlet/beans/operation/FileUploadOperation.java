@@ -99,7 +99,8 @@ public class FileUploadOperation {
                     FileUtils.copyFile(file,new File(dirPath + md5FileRelativePath)); //文件复制
                 }
             }
-            String httpUrl = String.format(Locale.CANADA,"http://%s:%d%s",
+            String httpUrl = String.format(Locale.CANADA,"%s://%s:%d%s",
+                    WebProperties.get().isSecurity?"https":"http",
                     WebProperties.get().webIp,
                     WebProperties.get().webPort,
                     localRelativePath

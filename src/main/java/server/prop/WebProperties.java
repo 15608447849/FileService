@@ -18,6 +18,7 @@ public class WebProperties extends ApplicationPropertiesBase {
         return Holder.INSTANCE;
     }
 
+
     @PropertiesName("web.ip")
     public String webIp;
     @PropertiesName("web.port")
@@ -26,6 +27,10 @@ public class WebProperties extends ApplicationPropertiesBase {
     public String rootPath;
     @PropertiesName("web.file.domain")
     public String domain;
+    @PropertiesName("image.logo.default")
+    public String imageLogoText;
+    @PropertiesName("protocol.security")
+    public boolean isSecurity;
 
     public String tempPath;
     @Override

@@ -4,8 +4,10 @@ import bottle.util.StringUtils;
 
 import net.coobird.thumbnailator.Thumbnails;
 
-import java.io.File;
-import java.io.IOException;
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.lang.reflect.Method;
 import java.util.List;
 
@@ -81,6 +83,91 @@ public class OperationUtils {
             e.printStackTrace();
         }
         return flag;
+    }
+
+    //判断文件是否为图片
+    public static boolean isImage(File file){
+        try
+        {
+            BufferedImage bufreader = ImageIO.read(file);
+            int width = bufreader.getWidth();
+            int height = bufreader.getHeight();
+            if(!(width==0 || height==0)){
+                return true;
+            }
+        }catch (Exception ignored) {
+        }
+        return false;
+    }
+
+    public enum LogoPlace{
+        LEFT_TOP,RIGHT_BOTTOM,CENTER;
+    }
+    public static File markImageByText(String logoText, File image, int degree, Color color, float alpha) {
+        return markImageByText(logoText,image,degree,color,alpha,LogoPlace.CENTER);
+    }
+    //添加水印
+    public static File markImageByText(String logoText, File image, int degree, Color color, float alpha, LogoPlace place) {
+        OutputStream os = null;
+        try {
+            if (logoText == null) return image;
+            // 1、源图片
+            java.awt.Image srcImg = ImageIO.read(image);
+            BufferedImage buffImg = new BufferedImage(srcImg.getWidth(null),srcImg.getHeight(null), BufferedImage.TYPE_INT_RGB);
+            InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream("simhei.ttf");
+            Font font = null;
+            int size = Math.max(buffImg.getWidth(),buffImg.getHeight()) /15;
+            if (in!=null){
+                font =  Font.createFont(Font.TRUETYPE_FONT, in).deriveFont(Font.ITALIC, size);//字体
+            }else{
+                font = new Font("default",Font.ITALIC, size);
+            }
+            FontMetrics fm = sun.font.FontDesignMetrics.getMetrics(font);
+            int fontW = fm.stringWidth(logoText);
+            int fontH = fm.getHeight();
+            //默认居中
+            float x = buffImg.getWidth()/2.0f - fontW/2.0f;
+            float y = buffImg.getHeight()/2.0f - fontH/2.0f;
+
+            if (place == LogoPlace.LEFT_TOP){
+                x = 0;
+                y = fontH;
+            }else if (place ==LogoPlace.RIGHT_BOTTOM){
+                x = buffImg.getWidth() - fontW;
+                y = buffImg.getHeight() - fontH ;
+            }
+            // 2、得到画笔对象
+            Graphics2D g = buffImg.createGraphics();
+            // 3、设置对线段的锯齿状边缘处理
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(srcImg.getScaledInstance(srcImg.getWidth(null), srcImg.getHeight(null), java.awt.Image.SCALE_SMOOTH), 0, 0, null);
+            // 4、设置水印旋转
+            if (degree> 0) g.rotate(Math.toRadians(degree),  x,y);
+
+            // 5、设置水印文字颜色
+            g.setColor(color);
+            // 6、设置水印文字Font
+            g.setFont(font);
+            // 7、设置水印文字透明度
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, alpha));
+            // 8、第一参数->设置的内容，后面两个参数->文字在图片上的坐标位置(x,y)
+            g.drawString(logoText,  x , y);
+            // 9、释放资源
+            g.dispose();
+            // 10、生成图片
+            os = new FileOutputStream(image);
+            ImageIO.write(buffImg, "PNG", os);
+            return image.getAbsoluteFile();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (null != os) os.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return image;
     }
 
 }

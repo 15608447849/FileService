@@ -1,13 +1,21 @@
 package server.servlet.imps;
 
+import bottle.util.Log4j;
+import bottle.util.StringUtils;
 import server.prop.WebProperties;
 import server.servlet.beans.operation.OperationUtils;
 import server.servlet.beans.result.UploadResult;
 
 import javax.servlet.http.HttpServletRequest;
+import java.awt.*;
 import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
+
+import static server.servlet.beans.operation.OperationUtils.isImage;
+import static server.servlet.beans.operation.OperationUtils.markImageByText;
 
 
 /**
@@ -22,16 +30,31 @@ public class ImageTailor extends FileUpLoad{
     @Override
     protected void subHook(HttpServletRequest req, List<UploadResult> resultList) {
         super.subHook(req, resultList);
-
         List<String> tailorList = filterData(req.getHeader("tailor-list"));
+        String logo = WebProperties.get().imageLogoText;
+        try {
+            String logoText = req.getHeader("image-logo");
+            System.out.println(logoText);
+            //添加水印
+            if (!StringUtils.isEmpty(logoText)){
+                logo = URLDecoder.decode(URLDecoder.decode(logoText,"UTF-8"),"UTF-8");
+                Log4j.info("添加客户端自定义水印:" + logo);
+            }
+        } catch (UnsupportedEncodingException ignored) {
+        }
 
         String rootPath = WebProperties.get().rootPath;
 
-        for (int i = 0 ; i < tailorList.size() ;i++){
+        for (int i = 0; i < resultList.size() ; i++){
+            UploadResult it = resultList.get(i);
+            if (!it.success)  continue;
+            File file = new File(rootPath + it.relativePath);
+            if (!isImage(file)) continue;
+            //水印
+            File srcImage = markImageByText(logo,file,30,new Color(0 ,0 ,0),0.2f);
+            //裁剪处理
+            if (tailorList==null || tailorList.size()<i) continue;
             try {
-                UploadResult it = resultList.get(i);
-                if (!it.success)  continue;
-                File srcImage = new File(rootPath + it.relativePath);
                 String tailorStr =tailorList.get(i);
                 String[] tailorArr = tailorStr.split(",");
                 List<String> tailorFileList = new ArrayList<>();
@@ -46,13 +69,8 @@ public class ImageTailor extends FileUpLoad{
                     if (flag) tailorFileList.add(destImageRelPath);
                 }
                 if (tailorFileList.size() > 0) it.tailorPathList = tailorFileList;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
+            } catch (Exception ignored) { }
         }
-        //处理文件裁剪值
-
 
     }
 }

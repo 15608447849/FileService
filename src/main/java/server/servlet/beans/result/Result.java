@@ -44,6 +44,9 @@ public class Result {
         this.data = data;
         return this;
     }
+    public Result value(int code, Object data){
+        return value(code,resultValMap.get(code),data);
+    }
 
     public Result value(int code, String message){
         return value(code,message,data);

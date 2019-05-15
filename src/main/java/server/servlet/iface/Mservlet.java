@@ -42,7 +42,8 @@ public class Mservlet extends javax.servlet.http.HttpServlet {
         resp.addHeader("Access-Control-Allow-Headers",
                         "specify-path,specify-filename,save-md5,is-sync,tailor-list," +
                                 "path-list,excel-path,ergodic-sub,"+
-                                "delete-list"
+                                "delete-list,image-logo,"+
+                                "delete-time"
         );
     }
 

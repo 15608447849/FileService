@@ -4,13 +4,13 @@ import com.sun.image.codec.jpeg.JPEGImageEncoder;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.HashMap;
+import java.io.*;
 import java.util.Iterator;
-import java.util.Map;
+
+import static net.coobird.thumbnailator.util.exif.Orientation.BOTTOM_LEFT;
+import static net.coobird.thumbnailator.util.exif.Orientation.LEFT_TOP;
 
 /**
  * @Author: leeping
@@ -83,15 +83,80 @@ public class ImageDataUtils {
         System.out.println("Time: "+ (System.currentTimeMillis() - stime ));
     }
 
+
+    public enum LogoPlace{
+        LEFT_TOP,RIGHT_BOTTOM,CENTER;
+    }
+    /**
+     * 给图片添加水印文字、可设置水印文字的旋转角度
+     */
+    public static void markImageByText(String logoText, File imgPath,int degree,Color color,float alpha,LogoPlace place) {
+        OutputStream os = null;
+        try {
+            // 1、源图片
+            java.awt.Image srcImg = ImageIO.read(imgPath);
+            BufferedImage buffImg = new BufferedImage(srcImg.getWidth(null),srcImg.getHeight(null), BufferedImage.TYPE_INT_RGB);
+//            float x = buffImg.getWidth()/2.0f * 0.02f + 12 ;
+
+            Font font = new java.awt.Font("Default", Font.ITALIC, Math.max(buffImg.getWidth(),buffImg.getHeight()) /15);//字体
+            FontMetrics fm = sun.font.FontDesignMetrics.getMetrics(font);
+            int fontW = fm.stringWidth(logoText);
+            int fontH = fm.getHeight();
+            //默认居中
+            float x = buffImg.getWidth()/2.0f - fontW/2.0f;
+            float y = buffImg.getHeight()/2.0f - fontH/2.0f;
+
+            if (place == LogoPlace.LEFT_TOP){
+                x = 0;
+                y = fontH;
+            }else if (place ==LogoPlace.RIGHT_BOTTOM){
+                x = buffImg.getWidth() - fontW;
+                y = buffImg.getHeight() - fontH ;
+            }
+            // 2、得到画笔对象
+            Graphics2D g = buffImg.createGraphics();
+            // 3、设置对线段的锯齿状边缘处理
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(srcImg.getScaledInstance(srcImg.getWidth(null), srcImg.getHeight(null), java.awt.Image.SCALE_SMOOTH), 0, 0, null);
+            // 4、设置水印旋转
+            if (degree> 0) g.rotate(Math.toRadians(degree),  x,y);
+
+            // 5、设置水印文字颜色
+            g.setColor(color);
+            // 6、设置水印文字Font
+            g.setFont(font);
+            // 7、设置水印文字透明度
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, alpha));
+            // 8、第一参数->设置的内容，后面两个参数->文字在图片上的坐标位置(x,y)
+            g.drawString(logoText,  x , y);
+            // 9、释放资源
+            g.dispose();
+            // 10、生成图片
+            os = new FileOutputStream(imgPath);
+            ImageIO.write(buffImg, "PNG", os);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (null != os) os.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     public static void main(String[] args) {
-        File file = new File("E:\\迅雷下载","1.jpg");
+//        File file = new File("E:\\迅雷下载","1.jpg");
+//
+//        File file1 = new File("E:\\迅雷下载",file.getName()+".tump");
+//        resize(file,file1,200,200);
+//
+//        String format = getImageFileType(file1);
+//        System.out.println(format);
 
-        File file1 = new File("E:\\迅雷下载",file.getName()+".tump");
-        resize(file,file1,200,200);
-
-        String format = getImageFileType(file1);
-        System.out.println(format);
-
+        markImageByText("www.onek11.com",new File("E:/迅雷下载/IMG_2501 - 副本.JPG"),0,new Color(0, 0, 255),0.2f,LogoPlace.RIGHT_BOTTOM);
+        markImageByText("欢迎使用一块医药采集平台",new File("E:/迅雷下载/IMG_2501 - 副本.JPG"),30,new Color(255 ,0 ,255),0.2f,LogoPlace.CENTER);
+        markImageByText("www.onek11.com",new File("E:/迅雷下载/IMG_2501 - 副本.JPG"),0,new Color(0, 0, 255),0.2f,LogoPlace.LEFT_TOP);
     }
 
 }
