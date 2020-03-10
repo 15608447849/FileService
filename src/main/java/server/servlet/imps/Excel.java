@@ -23,10 +23,9 @@ public class Excel extends Mservlet {
         String path = req.getHeader("excel-path");
         if (!StringUtils.isEmpty(path)){
             path = checkDirPath(path);
-            path = WebProperties.get().rootPath + path;
+            path = WebProperties.rootPath + path;
             try {
-                List<Map<String,String>> list = new ExcelReaderOperation(path).start();
-                result.data = list;
+                result.data = new ExcelReaderOperation(path).start();
                 result.value(SUCCESS);
             } catch (Exception e) {
                 e.printStackTrace();

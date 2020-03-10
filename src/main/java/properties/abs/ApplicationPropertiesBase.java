@@ -5,10 +5,7 @@ import properties.annotations.PropertiesName;
 import properties.infs.FieldConvert;
 import properties.infs.baseImp.*;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Properties;
@@ -57,7 +54,7 @@ public abstract class ApplicationPropertiesBase {
         String dirPath = new File(clazz.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent();
         File file = new File(dirPath+"/resources"+filePath);
         if (file.exists()){
-            return new FileInputStream(file);
+            return  new FileInputStream(file);
         }
         return clazz.getResourceAsStream( filePath );
     }
@@ -130,7 +127,7 @@ public abstract class ApplicationPropertiesBase {
     protected void initialization(){
         Field[] fields = getClass().getDeclaredFields();
         for(Field field:fields){
-            field.setAccessible(true); // 设置些属性是可以访问的
+            field.setAccessible(true); //设置些属性是可以访问的
             PropertiesName name = field.getAnnotation(PropertiesName.class);
             if (name == null) continue;
             try {

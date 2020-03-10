@@ -1,5 +1,6 @@
 package server.servlet.imps;
 
+import bottle.threadpool.IOThreadPool;
 import bottle.util.Log4j;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
@@ -58,7 +59,7 @@ public class FileUpLoad extends Mservlet {
             }
 
             DiskFileItemFactory diskFileItemFactory = new DiskFileItemFactory();
-            diskFileItemFactory.setRepository(new File(WebProperties.get().tempPath));
+            diskFileItemFactory.setRepository(new File(WebProperties.tempPath));
             // 设定上传文件的值，如果上传文件大于缓冲区值，就可能在repository所代表的文件夹中产生临时文件，否则直接在内存中进行处理
             diskFileItemFactory.setSizeThreshold(CACHE_VAL);
 
@@ -67,10 +68,13 @@ public class FileUpLoad extends Mservlet {
             uploader.setFileSizeMax(SINGE_FILE_MAX_SIZE);
             uploader.setHeaderEncoding("utf-8");
 
-
             List<FileItem> listItems = uploader.parseRequest(req);
             resultList = new FileUploadOperation(pathList,fileNameList,fileSaveMD5,listItems).execute();
-            subHook(req, resultList); //钩子
+
+            final List<UploadResult> _resultlist = resultList;
+
+            subHook(req, _resultlist); //钩子
+
         } catch (Exception e) {
             Log4j.error("文件上传错误",e.fillInStackTrace());
             result.value(EXCEPTION);
@@ -83,6 +87,7 @@ public class FileUpLoad extends Mservlet {
           writeJson(resp,result);
         }
     }
+
     protected void subHook(HttpServletRequest req, List<UploadResult> resultList){
         //子类实现
     }

@@ -34,15 +34,15 @@ public class FileErgodic extends Mservlet {
         }
         if (StringUtils.isEmpty(path)) path = FileUtils.SEPARATOR;
         try {
-            path = WebProperties.get().rootPath + checkDirPath(path);
+            path = WebProperties.rootPath + checkDirPath(path);
             //判断是否是一个文件
             File file = new File(path);
             if (file.isFile()){
                 result.data = true;
-                Log4j.info("存在文件:"+ path);
+//                Log4j.info("存在文件:"+ path);
             }else if (file.isDirectory()){
                 result.data = new FileErgodicOperation(path,isSub).start();
-                Log4j.info("遍历目录:"+ path +" list: "+ result.data);
+//                Log4j.info("遍历目录:"+ path +" list: "+ result.data);
             }else{
                 result.data = false;
             }

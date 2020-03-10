@@ -1,16 +1,20 @@
 import com.sun.image.codec.jpeg.JPEGCodec;
 import com.sun.image.codec.jpeg.JPEGImageEncoder;
+import net.coobird.thumbnailator.Thumbnails;
+
+
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URL;
 import java.util.Iterator;
 
-import static net.coobird.thumbnailator.util.exif.Orientation.BOTTOM_LEFT;
-import static net.coobird.thumbnailator.util.exif.Orientation.LEFT_TOP;
+
 
 /**
  * @Author: leeping
@@ -83,7 +87,6 @@ public class ImageDataUtils {
         System.out.println("Time: "+ (System.currentTimeMillis() - stime ));
     }
 
-
     public enum LogoPlace{
         LEFT_TOP,RIGHT_BOTTOM,CENTER;
     }
@@ -145,7 +148,95 @@ public class ImageDataUtils {
         }
     }
 
+    /**
+     * 获取远程网络图片信息
+     * @param imageURL
+     * @return
+     */
+    public static BufferedImage getRemoteBufferedImage(String imageURL) {
+        URL url = null;
+        InputStream is = null;
+        BufferedImage bufferedImage = null;
+        try {
+            url = new URL(imageURL);
+            is = url.openStream();
+            bufferedImage = ImageIO.read(is);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            try { if(is!=null) is.close(); } catch (IOException ignored) { }
+        }
+        return bufferedImage;
+    }
+
+    // 图片添加图片水印
+    public static String markImgMark(String watermarkUrl, String source, String output) throws IOException {
+        String result = "添加图片水印出错";
+        File file = new File(source);
+        Image img = ImageIO.read(file);
+        int width = img.getWidth(null);
+        int height = img.getHeight(null);
+        BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = bi.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.drawImage(img.getScaledInstance(width, height, Image.SCALE_SMOOTH), 0, 0, null);
+        ImageIcon imgIcon = new ImageIcon(watermarkUrl);
+        Image con = imgIcon.getImage();
+
+//        String imageURL = "https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1558690099853&di=ae99776f06d83feabc1b11b24694cbb1&imgtype=0&src=http%3A%2F%2Fhbimg.b0.upaiyun.com%2Fec8e7c6b8de280f10459901a43fd21917b1b784a3a74-6NUzGH_fw658";
+//        con = getRemoteBufferedImage(imageURL);
+
+        float clarity = 0.8f;//透明度
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, clarity));
+//        g.drawImage(con, 10, 10, null);//水印的位置
+        System.out.println(con.getWidth(null) +" - "+ con.getHeight(null));
+        int w = (width - con.getWidth(null))/2;
+        int h = (height - con.getHeight(null)) /2;
+        System.out.println(w + " "+ h);
+        g.drawImage(con, w, h, null);//水印的位置
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER));
+        g.dispose();
+        File sf = new File(output);
+        ImageIO.write(bi, "jpg", sf); // 保存图片
+        System.out.println("添加图片水印成功");
+        return result;
+    }
+
+    private static Color parseToColor(final String c) {
+        Color convertedColor = Color.BLACK;
+        try {
+            convertedColor = new Color(Integer.parseInt(c, 16));
+        } catch(NumberFormatException ignored) {
+        }
+        return convertedColor;
+    }
+
+    public static void overlapImage(String qrcodePath) {
+        try {
+            BufferedImage big = new BufferedImage(800, 800, BufferedImage.TYPE_INT_RGB);
+            Graphics2D gd = big.createGraphics();
+//            big = gd.getDeviceConfiguration().createCompatibleImage(800, 800, Transparency.OPAQUE);
+//            gd.setBackground(Color.BLUE);
+            gd.setColor(Color.white);
+            gd.fillRect(0, 0, 800, 800);
+//            gd.dispose();
+            //BufferedImage big = ImageIO.read(new File(screenPath));
+            //BufferedImage small = ImageIO.read(new File(qrcodePath));
+            BufferedImage small = ImageIO.read(new File("C:\\Users\\user\\Desktop\\11017020100202.jpg"));
+//            Graphics2D g = big.createGraphics();
+            int x = ( big.getWidth() - small.getWidth() ) / 2;
+            int y = ( big.getHeight() - small.getHeight() ) / 2;
+            gd.drawImage(small, x, y, small.getWidth(), small.getHeight(), null);
+            gd.dispose();
+            ImageIO.write(big, "jpg", new File(qrcodePath));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void main(String[] args) {
+
 //        File file = new File("E:\\迅雷下载","1.jpg");
 //
 //        File file1 = new File("E:\\迅雷下载",file.getName()+".tump");
@@ -154,9 +245,61 @@ public class ImageDataUtils {
 //        String format = getImageFileType(file1);
 //        System.out.println(format);
 
-        markImageByText("www.onek11.com",new File("E:/迅雷下载/IMG_2501 - 副本.JPG"),0,new Color(0, 0, 255),0.2f,LogoPlace.RIGHT_BOTTOM);
-        markImageByText("欢迎使用一块医药采集平台",new File("E:/迅雷下载/IMG_2501 - 副本.JPG"),30,new Color(255 ,0 ,255),0.2f,LogoPlace.CENTER);
-        markImageByText("www.onek11.com",new File("E:/迅雷下载/IMG_2501 - 副本.JPG"),0,new Color(0, 0, 255),0.2f,LogoPlace.LEFT_TOP);
+//        markImageByText("www.onek11.com",new File("E:/迅雷下载/IMG_2501 - 副本.JPG"),0,new Color(0, 0, 255),0.2f,LogoPlace.RIGHT_BOTTOM);
+//        markImageByText("欢迎使用一块医药采集平台",new File("E:/迅雷下载/IMG_2501 - 副本.JPG"),30,new Color(255 ,0 ,255),0.2f,LogoPlace.CENTER);
+//        markImageByText("www.onek11.com",new File("E:/迅雷下载/IMG_2501 - 副本.JPG"),0,new Color(0, 0, 255),0.2f,LogoPlace.LEFT_TOP);
+
+//
+//        try {
+//
+//            String dirc =  "C:\\Users\\user\\Desktop\\GOODS\\";
+////            System.out.println(markImgMark(dirc+"logo2.png",dirc+"1.jpg",dirc+"_1.jpg"));
+//            System.out.println(markImgMark(dirc+"logo2.png",dirc+"1.jpg",dirc+"_1.jpg"));
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+//        try {
+//            //得到当前的系统属性
+//            System.getProperties().list(System.out);
+//            String encoding = System.getProperty("file.encoding");
+//            System.out.println("\n当前编码:" + encoding);
+//        } catch (NumberFormatException e) {
+//            e.printStackTrace();
+//        }
+
+
+//        overlapImage("C:\\Users\\user\\Desktop\\test.jpg");
+
+        try {
+            File file = new File("C:\\Users\\user\\Desktop\\","launch.jpg");
+            File file2 = new File("C:\\Users\\user\\Desktop\\","launch2.png");
+            Thumbnails.of(file)
+                    .scale(1f)
+                    .outputQuality(0.1f)
+                    .toFile(file2);
+            Thumbnails.of(file2)
+                    .scale(1f)
+                    .outputQuality(0.1f)
+                    .toFile(file2);
+            Thumbnails.of(file)
+                    .scale(1f)
+                    .outputQuality(0.1f)
+                    .toFile(file2);
+            Thumbnails.of(file)
+                    .scale(1f)
+                    .outputQuality(0.1f)
+                    .toFile(file2);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
+
+
+
+
+
 
 }

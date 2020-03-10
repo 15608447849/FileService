@@ -65,7 +65,7 @@ public class FileUploadOperation {
 
     private void saveFile(FileItem fileItem, String specifyPath, String specifyFileName, boolean isSaveMD5Name, UploadResult uploadResult) {
 
-        final String dirPath = WebProperties.get().rootPath; //本地绝对目录
+        final String dirPath = WebProperties.rootPath; //本地绝对目录
         //创建目录
         if (!FileUtils.checkDir(dirPath+specifyPath)){
             uploadResult.error = "directory does not exist or created fail";
@@ -99,16 +99,8 @@ public class FileUploadOperation {
                     FileUtils.copyFile(file,new File(dirPath + md5FileRelativePath)); //文件复制
                 }
             }
-            String httpUrl = String.format(Locale.CANADA,"%s://%s:%d%s",
-                    WebProperties.get().isSecurity?"https":"http",
-                    WebProperties.get().webIp,
-                    WebProperties.get().webPort,
-                    localRelativePath
-            );
-            if (!StringUtils.isEmpty(WebProperties.get().domain)){
-                httpUrl = httpUrl.replace(WebProperties.get().webIp+ ":"+ WebProperties.get().webPort,WebProperties.get().domain);
-            }
-            uploadResult.httpUrl = httpUrl;
+
+            uploadResult.httpUrl = WebProperties.domain + localRelativePath;
             uploadResult.relativePath = localRelativePath;
             uploadResult.fileMd5 = fileMd5;
             uploadResult.currentFileName = specifyFileName;

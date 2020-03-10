@@ -16,10 +16,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.List;
-import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
 import static server.servlet.beans.result.Result.RESULT_CODE.*;
 
@@ -31,20 +28,98 @@ import static server.servlet.beans.result.Result.RESULT_CODE.*;
  */
 public class GenerateZip extends Mservlet {
 
-    private final String ZIP_TEMP_DIR_PREV = "zip_dir_temp_";
+    private static final String ZIP_BATCH_DIR =  FileUtils.SEPARATOR  + "ZIP_TEMP" +  FileUtils.SEPARATOR ;
 
-    private final int TIME_DEL = 1000 * 60 * 10; //10分钟
+    private static final String ZIP_TEMP_DIR_PREV = "zip_batch_file_";
 
-    private final Timer timer = new Timer();
+    private static final long TIME_DEL = 1000L * 60 * 60 * 3; //3小时
+
+    private static final Timer timer = new Timer();
+
+    static {
+        // 注册定时器 - 10分钟后自动删除
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                File dict = new File(WebProperties.rootPath,ZIP_BATCH_DIR);
+                if (dict.exists()){
+                    File[] files = dict.listFiles();
+                    for (File f : files){
+                        if (System.currentTimeMillis() - f.lastModified() > TIME_DEL){
+                            f.delete();
+                        }
+                    }
+                }
+            }
+        },TIME_DEL);
+    }
+
+    private void addFile(List<File> list, File file) {
+        if (file.isFile()){
+            list.add(file);
+        }else if (file.isDirectory()){
+            File[] files = file.listFiles();
+            if (files != null && files.length>0){
+                for (File f : files){
+                    addFile(list,f);
+                }
+            }
+        }
+    }
+
+    private List<File> checkPaths(List<String> paths) {
+       List<File> list = new ArrayList<>();
+       for (String path : paths){
+           if (!path.startsWith(FileUtils.SEPARATOR)) path = FileUtils.SEPARATOR + path;// 保证前面有 '/'
+           File file = new File(WebProperties.rootPath  + path);
+           if (!file.exists()){
+               //文件不存在
+               continue;
+           }
+          addFile(list,file);
+       }
+       return list;
+    }
+
+
+
+    /**
+     *
+     * @param paths 需要打包的文件的相对路径 例如: /Music/jcs.msv
+     * @return 存放了需要打包文件的临时目录全路径
+     */
+    private File cpFileListToDir(List<String> paths) throws  Exception{
+
+        String dirPath = WebProperties.rootPath  + ZIP_BATCH_DIR +
+                EncryptUtils.encryption(ZIP_TEMP_DIR_PREV + System.currentTimeMillis());
+
+        List<File> fileList = checkPaths(paths);
+
+        File dir = new File(dirPath);
+        if (fileList.size() > 0){
+            if (!dir.exists()) dir.mkdirs();//创建目录
+            for (File file : fileList) {
+                File out = new File(dirPath,
+                        EncryptUtils.encryption(file.getAbsolutePath())+"_"+file.getName()+
+                                file.getName().substring(file.getName().lastIndexOf(".")));
+                FileUtils.copyFile(file, out); //复制文件
+            }
+        }
+        return dir;
+    }
+
+
     /**
      * 文件夹压缩zip
      * @param dir 指定文件夹
      * @return 压缩包相对路径
      */
-    private String compressZip(File dir) throws Exception{
-            String zipPath = File.separator + dir.getName()+".zip";
-            File zipFile = new File(WebProperties.get().rootPath + zipPath);
+    private String compressZip(File dir){
+            String zipPath =  ZIP_BATCH_DIR + dir.getName() +".zip";
+
+            File zipFile = new File(WebProperties.rootPath + zipPath);
             if (zipFile.exists()) zipFile.delete();
+
             Project prj = new Project();
             Zip zip = new Zip();
             zip.setProject(prj);
@@ -54,97 +129,40 @@ public class GenerateZip extends Mservlet {
             fileSet.setDir(dir);
             zip.addFileset(fileSet);
             zip.execute();
-            org.apache.commons.io.FileUtils.deleteDirectory(dir);
+
+            FileUtils.deleteFileOrDir(dir.getAbsolutePath());
+
             return zipPath;
     }
-
-    /**
-     *
-     * @param paths 需要打包的文件的相对路径 例如: /Music/jcs.msv
-     * @return 存放了需要打包文件的临时目录全路径
-     */
-    private File cpFileListToDir(List<String> paths) throws  Exception{
-
-            String homePath = WebProperties.get().rootPath;
-
-            String dirPath = homePath + FileUtils.SEPARATOR + EncryptUtils.byteToHexString( (ZIP_TEMP_DIR_PREV +System.currentTimeMillis()).getBytes());
-
-            File dir = new File(dirPath);
-
-            if (!dir.exists()) dir.mkdirs();//创建目录
-
-            int size = paths.size();
-            File temp ;
-            File out;
-            File outDir;
-            String path;
-
-            for (int i = 0;i<size;i++){
-                path = paths.get(i);
-
-                if (!path.startsWith(FileUtils.SEPARATOR)) path = FileUtils.SEPARATOR+ path;//保证前面有 '/'
-
-                temp = new File(homePath  + path);
-                out = new File(dirPath + path);
-
-                outDir = new File(out.getParent());
-
-                if (!outDir.exists()) outDir.mkdirs();
-
-                if (temp.exists()){
-                    FileUtils.copyFile(temp,out);
-                }
-                else throw new FileNotFoundException();
-            }
-
-            return dir;
-    }
-
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         super.doPost(req, resp);
         Result result = new Result().value(UNKNOWN);
         List<String> pathList = filterData(req.getHeader("path-list"));
-//        Log.i("zip 文件列表: "+ pathList);
+        Log4j.info("ZIP-文件列表: "+ pathList);
+
 
         try {
-            if(pathList.size() > 0) {
-
-                String zipPath  = compressZip(cpFileListToDir(pathList));
-
-                //返回ZIP包URL
-                String url = String.format(Locale.CANADA,"http://%s:%d%s",
-                        WebProperties.get().webIp,
-                        WebProperties.get().webPort,
-                        zipPath
-                );
-
-                // 注册定时器 - 10分钟后自动删除
-                timer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        try {
-                            File file = new File(WebProperties.get().rootPath + zipPath);
-//                            Log.i("删除临时文件: "+ file);
-                            file.delete();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                },TIME_DEL);
-
-                Log4j.info("zip URL : " + url.replace("\\", "/"));
-
-                resp.sendRedirect(url);
+            if(pathList.size() == 0) {
+                throw new FileNotFoundException("没有指定需要打包的文件列表");
             }
-            result.value(PARAM_ERROR);
 
+            File dirt = cpFileListToDir(pathList);
+            if (!dirt.exists()){
+                throw new FileNotFoundException("没有存在一个可批量打包的文件");
+            }
+
+            String zipPath  = compressZip(dirt);
+            //返回ZIP包URL
+            String url = WebProperties.domain +  zipPath;
+            Log4j.info("ZIP URL : " + url);
+            result.data = url;
+            result.value(SUCCESS);
         } catch (Exception e) {
-            e.printStackTrace();
-            result.value(EXCEPTION);
+            result.data = e.getMessage();
+            result.value(PARAM_ERROR);
         }
-
         writeJson(resp,result);
     }
 }

@@ -2,6 +2,7 @@ package server.servlet.imps;
 
 import bottle.backup.client.FtcBackupClient;
 import server.prop.BackupProperties;
+import server.servlet.beans.operation.FileBackUpOperation;
 import server.servlet.beans.result.UploadResult;
 import server.prop.WebProperties;
 
@@ -16,7 +17,7 @@ import static server.servlet.beans.operation.OperationUtils.getIndexValue;
  * Created by user on 2017/12/14.
  * 上传完文件并且同步文件
  */
-public class FileBackup extends ImageTailor {
+public class FileBackup extends FileUpLoad {
 
     //is-sync = true;false;...
 
@@ -25,11 +26,10 @@ public class FileBackup extends ImageTailor {
         super.subHook(req, resultList);
         if (resultList!=null && resultList.size() > 0){
             if (!BackupProperties.get().isAccess) return;
-
             //指定对应下标的文件的是否同步
             ArrayList<String> isSyncList = filterData(req.getHeader("is-sync"));
             FtcBackupClient client =  BackupProperties.get().ftcBackupServer.getClient();
-            String rootPath = WebProperties.get().rootPath;
+            String rootPath = WebProperties.rootPath;
 
             UploadResult it;
             boolean isSync;
@@ -42,12 +42,9 @@ public class FileBackup extends ImageTailor {
                 isSync = getIndexValue(isSyncList, i ,BackupProperties.get().isAuto);
 
                 if (isSync){
-                    client.addBackupFile(new File(rootPath + it.relativePath)); //同步源文件
+                    FileBackUpOperation.add(rootPath + it.relativePath); //同步源文件
                     if (it.md5FileRelativePath != null){
-                        client.addBackupFile(new File(rootPath + it.md5FileRelativePath));//md5文件同步
-                    }
-                    if (it.tailorPathList !=null){
-                        it.tailorPathList.forEach(path -> client.addBackupFile(new File(rootPath + path))); //图片裁剪文件同步
+                        FileBackUpOperation.add(rootPath + it.md5FileRelativePath);//md5文件同步
                     }
                 }
             }

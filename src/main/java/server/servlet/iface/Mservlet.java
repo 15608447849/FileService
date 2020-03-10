@@ -36,14 +36,15 @@ public class Mservlet extends javax.servlet.http.HttpServlet {
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        resp.addHeader("Access-Control-Allow-Origin", "*");
-        resp.addHeader("Access-Control-Allow-Methods","GET, HEAD, POST, PUT, DELETE, TRACE, OPTIONS");
-        resp.addHeader("Access-Control-Allow-Headers","x-requested-with"); // 允许x-requested-with请求头
+//        resp.addHeader("Access-Control-Allow-Origin", "*");
+//        resp.addHeader("Access-Control-Allow-Methods","GET, HEAD, POST, PUT, DELETE, TRACE, OPTIONS");
+//        resp.addHeader("Access-Control-Allow-Headers","x-requested-with"); // 允许x-requested-with请求头
         resp.addHeader("Access-Control-Allow-Headers",
                         "specify-path,specify-filename,save-md5,is-sync,tailor-list," +
                                 "path-list,excel-path,ergodic-sub,"+
-                                "delete-list,image-logo,"+
-                                "delete-time"
+                                "delete-list,image-compress,image-logo,image-size-limit,image-spec-suffix-limit,image-compress-size,image-min-exist,"+
+                                "delete-time,"+
+                                "image-base64,image-pix-color"
         );
     }
 

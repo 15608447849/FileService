@@ -24,20 +24,9 @@ public class FileDelete extends Mservlet {
         super.doPost(req,resp);
         //文件删除
         ArrayList<String> list = filterJsonData(req.getHeader("delete-list"));
-        ArrayList<String> delList = new ArrayList<>();
         if (list!=null){
-            String rootPath = WebProperties.get().rootPath;
-
-            list.forEach(path -> {
-                        try{
-                            if (FileUtils.deleteFile( rootPath + path)){
-                                delList.add(path);
-                            }
-                        }catch (Exception ignored){ }
-                    }
-            );
+            list.forEach(path -> FileUtils.deleteFileOrDir(  WebProperties.rootPath + path));
         }
-
-        writeJson(resp,new Result().value(SUCCESS,delList));
+        writeJson(resp,new Result().value(SUCCESS));
     }
 }
