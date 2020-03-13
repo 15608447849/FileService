@@ -76,15 +76,11 @@ public class LunchServer {
             manager.deploy();
             HttpHandler httpHandler = manager.start();
 
-            //路径默认处理程序
-//            PathHandler pathHandler =
-//                    Handlers.path(httpHandler);
-
             Undertow.builder()
                     .addHttpListener(WebProperties.webPort, WebProperties.webIp, httpHandler)
                     .build()
                     .start();
-            System.out.println("打开服务 : " + WebProperties.webIp+" - "+WebProperties.webPort +" - "+ WebProperties.rootPath);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -93,20 +89,20 @@ public class LunchServer {
 
     private static void startFileBackupServer() {
         try {
-            if (!BackupProperties.get().isAccess) return;
+            if (!BackupProperties.isAccess) return;
 
-            BackupProperties.get().ftcBackupServer = new FtcBackupServer(WebProperties.rootPath,WebProperties.webIp, BackupProperties.get().localPort,64,5000);
+            BackupProperties.ftcBackupServer = new FtcBackupServer(WebProperties.rootPath,WebProperties.webIp, BackupProperties.localPort,64,5000);
 
-            FtcBackupClient client = BackupProperties.get().ftcBackupServer.getClient();
+            FtcBackupClient client = BackupProperties.ftcBackupServer.getClient();
 
-            BackupProperties.get().ftcBackupServer.setCallback(client::addBackupFile);
+            BackupProperties.ftcBackupServer.setCallback(client::addBackupFile);
 
             client.addFilterSuffix(".tmp");
-            client.addServerAddress(BackupProperties.get().remoteList);
-            if (BackupProperties.get().isBoot){
+            client.addServerAddress(BackupProperties.remoteList);
+            if (BackupProperties.isBoot){
                 client.ergodicDirectory();
             }
-            client.setTime(BackupProperties.get().time);
+            client.setTime(BackupProperties.time);
 
         } catch (IOException e) {
             e.printStackTrace();

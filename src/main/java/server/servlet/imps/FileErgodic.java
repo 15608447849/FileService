@@ -1,8 +1,7 @@
 package server.servlet.imps;
 
-import bottle.util.FileUtils;
-import bottle.util.Log4j;
-import bottle.util.StringUtils;
+import bottle.util.FileTool;
+import bottle.util.StringUtil;
 import server.prop.WebProperties;
 import server.servlet.beans.operation.FileErgodicOperation;
 import server.servlet.beans.result.Result;
@@ -15,7 +14,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import static bottle.util.FileUtils.checkFile;
 import static server.servlet.beans.result.Result.RESULT_CODE.EXCEPTION;
 import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
 
@@ -27,12 +25,12 @@ public class FileErgodic extends Mservlet {
         String path = req.getHeader("specify-path");
         String sub = req.getHeader("ergodic-sub");
         boolean isSub = true;
-        if (!StringUtils.isEmpty(sub)){
+        if (!StringUtil.isEmpty(sub)){
             try{
                 isSub = Boolean.parseBoolean(sub);
             }catch (Exception ignored){}
         }
-        if (StringUtils.isEmpty(path)) path = FileUtils.SEPARATOR;
+        if (StringUtil.isEmpty(path)) path = FileTool.SEPARATOR;
         try {
             path = WebProperties.rootPath + checkDirPath(path);
             //判断是否是一个文件

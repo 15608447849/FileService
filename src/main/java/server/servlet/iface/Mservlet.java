@@ -1,8 +1,7 @@
 package server.servlet.iface;
 
-import bottle.util.FileUtils;
-import bottle.util.Log4j;
-import bottle.util.StringUtils;
+import bottle.util.FileTool;
+import bottle.util.StringUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
@@ -20,54 +19,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 /**
- * Created by Administrator on 2017/5/31.
+ * Created by lzp on 2017/5/31.
  */
 public class Mservlet extends javax.servlet.http.HttpServlet {
 
-
-    private final String PARAM_SEPARATOR = ";";
-
-    //跨域
-    protected void filter(HttpServletRequest req,HttpServletResponse resp) {
-//        http://www.ruanyifeng.com/blog/2016/04/cors.html
-        try {
-            resp.setCharacterEncoding("UTF-8");
-            req.setCharacterEncoding("UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-//        resp.addHeader("Access-Control-Allow-Origin", "*");
-//        resp.addHeader("Access-Control-Allow-Methods","GET, HEAD, POST, PUT, DELETE, TRACE, OPTIONS");
-//        resp.addHeader("Access-Control-Allow-Headers","x-requested-with"); // 允许x-requested-with请求头
-        resp.addHeader("Access-Control-Allow-Headers",
-                        "specify-path,specify-filename,save-md5,is-sync,tailor-list," +
-                                "path-list,excel-path,ergodic-sub,"+
-                                "delete-list,image-compress,image-logo,image-size-limit,image-spec-suffix-limit,image-compress-size,image-min-exist,"+
-                                "delete-time,"+
-                                "image-base64,image-pix-color"
-        );
-    }
-
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        filter(req,resp);
-    }
-
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        filter(req,resp);
-
-    }
-
-    protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        filter(req,resp);
-        super.doOptions(req, resp);
-    }
+    private final static String PARAM_SEPARATOR = ";";
 
     protected ArrayList<String> filterData(String data) {
         ArrayList<String> dataList = new ArrayList<>();
         try {
-            if (!StringUtils.isEmpty(data)) { // 不为空
+            if (!StringUtil.isEmpty(data)) { // 不为空
                 data = URLDecoder.decode(data, "UTF-8"); // url解码
                 if (data.contains(PARAM_SEPARATOR)) {
                     String[] pathArray = data.split(PARAM_SEPARATOR);
@@ -85,7 +46,7 @@ public class Mservlet extends javax.servlet.http.HttpServlet {
 
     protected ArrayList<String> filterJsonData(String json){
         try {
-            if (!StringUtils.isEmpty(json)) { // 不为空
+            if (!StringUtil.isEmpty(json)) { // 不为空
                 json = URLDecoder.decode(json, "UTF-8"); // url解码
                 return new Gson().fromJson(json,new TypeToken<ArrayList<String>>(){}.getType());
             }
@@ -106,9 +67,9 @@ public class Mservlet extends javax.servlet.http.HttpServlet {
 
     //检测目录路径是否正确
     protected String checkDirPath(String path) {
-            path = path.replace("\\\\", FileUtils.SEPARATOR);
-            if (!path.startsWith(FileUtils.SEPARATOR)) path = FileUtils.SEPARATOR + path;//保证前面有 '/'
-            if (!path.endsWith(FileUtils.SEPARATOR)) path += FileUtils.SEPARATOR; //后面保证 '/'
+            path = path.replace("\\\\", FileTool.SEPARATOR);
+            if (!path.startsWith(FileTool.SEPARATOR)) path = FileTool.SEPARATOR + path;//保证前面有 '/'
+            if (!path.endsWith(FileTool.SEPARATOR)) path += FileTool.SEPARATOR; //后面保证 '/'
             return path;
     }
 

@@ -1,12 +1,13 @@
 package server.prop;
 
-import bottle.util.FileUtils;
-import properties.abs.ApplicationPropertiesBase;
-import properties.annotations.PropertiesFilePath;
-import properties.annotations.PropertiesName;
+
+import bottle.properties.abs.ApplicationPropertiesBase;
+import bottle.properties.annotations.PropertiesFilePath;
+import bottle.properties.annotations.PropertiesName;
+import bottle.util.FileTool;
 
 @PropertiesFilePath("/web.properties")
-public class WebProperties extends ApplicationPropertiesBase {
+public class WebProperties {
 
     @PropertiesName("web.ip")
     public static String webIp = "127.0.0.1";
@@ -42,11 +43,13 @@ public class WebProperties extends ApplicationPropertiesBase {
 
     static {
         ApplicationPropertiesBase.initStaticFields(WebProperties.class);
-        if (!FileUtils.checkDir(rootPath)){
+        if (!FileTool.checkDir(rootPath)){
             throw new IllegalStateException("启动失败,无效的主目录路径:"+rootPath);
         }
-        tempPath = rootPath+FileUtils.SEPARATOR+"temporary";
-        if (!FileUtils.checkDir(tempPath)){
+
+        tempPath = rootPath + FileTool.SEPARATOR+"temporary";
+
+        if (!FileTool.checkDir(tempPath)){
             throw new IllegalStateException("启动失败,无效的主目录路径:"+tempPath);
         }
     }

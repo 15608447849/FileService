@@ -1,6 +1,7 @@
 package server.servlet.imps;
 
-import bottle.util.GsonUtils;
+
+import bottle.util.GoogleGsonUtil;
 import server.servlet.beans.result.Result;
 import server.servlet.iface.Mservlet;
 
@@ -61,7 +62,7 @@ public class ImagePixColor extends Mservlet {
         try {
             String json = req.getHeader("image-pix-color");
             if (json != null){
-                Param param = GsonUtils.jsonToJavaBean(json,Param.class);
+                Param param = GoogleGsonUtil.jsonToJavaBean(json,Param.class);
                 if (param!=null){
                     BufferedImage image = ImageIO.read(new URL(param.image));
                     int [] rgb = getRGB(image,param.x,param.y);

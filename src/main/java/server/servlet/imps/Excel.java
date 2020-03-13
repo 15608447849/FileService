@@ -1,6 +1,7 @@
 package server.servlet.imps;
 
-import bottle.util.StringUtils;
+
+import bottle.util.StringUtil;
 import server.prop.WebProperties;
 import server.servlet.beans.operation.ExcelReaderOperation;
 import server.servlet.beans.result.Result;
@@ -21,7 +22,7 @@ public class Excel extends Mservlet {
         super.doPost(req, resp);
         Result result = new Result();
         String path = req.getHeader("excel-path");
-        if (!StringUtils.isEmpty(path)){
+        if (!StringUtil.isEmpty(path)){
             path = checkDirPath(path);
             path = WebProperties.rootPath + path;
             try {

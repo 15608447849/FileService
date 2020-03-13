@@ -1,10 +1,10 @@
 package server.servlet.beans.operation;
 
-import bottle.util.FileUtils;
+
+import bottle.util.FileTool;
 import bottle.util.HttpUtil;
 import bottle.util.Log4j;
-import bottle.util.StringUtils;
-
+import bottle.util.StringUtil;
 import net.coobird.thumbnailator.Thumbnails;
 
 import javax.imageio.ImageIO;
@@ -52,7 +52,7 @@ public class OperationUtils {
                 if (dataList.size()>index) {
                     val = dataList.get(index);
                 }
-                if (!StringUtils.isEmpty(val)){
+                if (!StringUtil.isEmpty(val)){
                     if (def instanceof String){
                         return (T) val;
                     }
@@ -164,7 +164,7 @@ public class OperationUtils {
             }
             if (!flag){
                 Log4j.info("网络压缩: " + image);
-                FileUtils.copyFile(image,compress);
+                FileTool.copyFile(image,compress);
                 imageCompress(compress,spSize);
             }
             Log4j.info(compress + " 压缩后大小: "+ fileSizeFormat(compress.length()) );

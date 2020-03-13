@@ -25,10 +25,10 @@ public class FileBackup extends FileUpLoad {
     protected void subHook(HttpServletRequest req, List<UploadResult> resultList) {
         super.subHook(req, resultList);
         if (resultList!=null && resultList.size() > 0){
-            if (!BackupProperties.get().isAccess) return;
+            if (!BackupProperties.isAccess) return;
             //指定对应下标的文件的是否同步
             ArrayList<String> isSyncList = filterData(req.getHeader("is-sync"));
-            FtcBackupClient client =  BackupProperties.get().ftcBackupServer.getClient();
+            FtcBackupClient client =  BackupProperties.ftcBackupServer.getClient();
             String rootPath = WebProperties.rootPath;
 
             UploadResult it;
@@ -39,7 +39,7 @@ public class FileBackup extends FileUpLoad {
 
                 if (!it.success)  continue;
 
-                isSync = getIndexValue(isSyncList, i ,BackupProperties.get().isAuto);
+                isSync = getIndexValue(isSyncList, i ,BackupProperties.isAuto);
 
                 if (isSync){
                     FileBackUpOperation.add(rootPath + it.relativePath); //同步源文件

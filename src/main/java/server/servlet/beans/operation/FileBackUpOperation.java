@@ -14,8 +14,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class FileBackUpOperation {
 
     public static void add(File file){
-        if (!BackupProperties.get().isAccess) return;
-        FtcBackupClient client =  BackupProperties.get().ftcBackupServer.getClient();
+        if (!BackupProperties.isAccess) return;
+        FtcBackupClient client =  BackupProperties.ftcBackupServer.getClient();
         client.addBackupFile(file);
     }
 

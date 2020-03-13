@@ -1,7 +1,6 @@
 package server.servlet.beans.operation;
 
-
-import bottle.util.FileUtils;
+import bottle.util.FileTool;
 import bottle.util.Log4j;
 
 import java.io.*;
@@ -87,12 +86,12 @@ public class FFMPRG_CMD {
                 executeCmd(exe_cmd_2);
             }
 
-            FileUtils.deleteFile(_unit); //删除单元
+            FileTool.deleteFile(_unit); //删除单元
 
             File target = new File(_dist);
 
             if (target.exists() && target.length() > 0 ){
-                FileUtils.rename(target,dist);
+                FileTool.rename(target,dist);
             }
 
             return dist.exists() && dist.length() > 0;

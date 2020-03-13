@@ -1,8 +1,10 @@
 package server.servlet.imps;
 
-import bottle.util.EncryptUtils;
-import bottle.util.FileUtils;
+
+import bottle.util.EncryptUtil;
+import bottle.util.FileTool;
 import bottle.util.Log4j;
+import org.apache.commons.io.FileUtils;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Zip;
 import org.apache.tools.ant.types.FileSet;
@@ -28,7 +30,7 @@ import static server.servlet.beans.result.Result.RESULT_CODE.*;
  */
 public class GenerateZip extends Mservlet {
 
-    private static final String ZIP_BATCH_DIR =  FileUtils.SEPARATOR  + "ZIP_TEMP" +  FileUtils.SEPARATOR ;
+    private static final String ZIP_BATCH_DIR =  FileTool.SEPARATOR  + "ZIP_TEMP" +  FileTool.SEPARATOR ;
 
     private static final String ZIP_TEMP_DIR_PREV = "zip_batch_file_";
 
@@ -70,7 +72,7 @@ public class GenerateZip extends Mservlet {
     private List<File> checkPaths(List<String> paths) {
        List<File> list = new ArrayList<>();
        for (String path : paths){
-           if (!path.startsWith(FileUtils.SEPARATOR)) path = FileUtils.SEPARATOR + path;// 保证前面有 '/'
+           if (!path.startsWith(FileTool.SEPARATOR)) path = FileTool.SEPARATOR + path;// 保证前面有 '/'
            File file = new File(WebProperties.rootPath  + path);
            if (!file.exists()){
                //文件不存在
@@ -91,7 +93,7 @@ public class GenerateZip extends Mservlet {
     private File cpFileListToDir(List<String> paths) throws  Exception{
 
         String dirPath = WebProperties.rootPath  + ZIP_BATCH_DIR +
-                EncryptUtils.encryption(ZIP_TEMP_DIR_PREV + System.currentTimeMillis());
+                EncryptUtil.encryption(ZIP_TEMP_DIR_PREV + System.currentTimeMillis());
 
         List<File> fileList = checkPaths(paths);
 
@@ -100,7 +102,7 @@ public class GenerateZip extends Mservlet {
             if (!dir.exists()) dir.mkdirs();//创建目录
             for (File file : fileList) {
                 File out = new File(dirPath,
-                        EncryptUtils.encryption(file.getAbsolutePath())+"_"+file.getName()+
+                        EncryptUtil.encryption(file.getAbsolutePath())+"_"+file.getName()+
                                 file.getName().substring(file.getName().lastIndexOf(".")));
                 FileUtils.copyFile(file, out); //复制文件
             }
@@ -130,7 +132,7 @@ public class GenerateZip extends Mservlet {
             zip.addFileset(fileSet);
             zip.execute();
 
-            FileUtils.deleteFileOrDir(dir.getAbsolutePath());
+            FileTool.deleteFileOrDir(dir.getAbsolutePath());
 
             return zipPath;
     }

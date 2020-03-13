@@ -1,9 +1,8 @@
 package server.servlet.beans.operation;
-
-import bottle.util.EncryptUtils;
-import bottle.util.FileUtils;
+;
+import bottle.util.EncryptUtil;
+import bottle.util.FileTool;
 import bottle.util.Log4j;
-import bottle.util.StringUtils;
 import org.apache.commons.fileupload.FileItem;
 import server.prop.WebProperties;
 import server.servlet.beans.result.UploadResult;
@@ -67,7 +66,7 @@ public class FileUploadOperation {
 
         final String dirPath = WebProperties.rootPath; //本地绝对目录
         //创建目录
-        if (!FileUtils.checkDir(dirPath+specifyPath)){
+        if (!FileTool.checkDir(dirPath+specifyPath)){
             uploadResult.error = "directory does not exist or created fail";
             return;
         }
@@ -86,17 +85,17 @@ public class FileUploadOperation {
             boolean isWrite = true;
 
             if (file.exists()) {
-                isWrite = FileUtils.deleteFile(file.getCanonicalPath());
+                isWrite = FileTool.deleteFile(file.getCanonicalPath());
             }
            if (isWrite) fileItem.write(file); //流写入文件
             fileItem.delete(); //删除临时文件
-            String fileMd5 = EncryptUtils.getFileMd5ByString(file);//文件MD5
+            String fileMd5 = EncryptUtil.getFileMd5ByString(file);//文件MD5
 
             if (isSaveMD5Name){
                 //创建目录
-                if (FileUtils.checkDir(dirPath + "/md5s" + specifyPath)){
+                if (FileTool.checkDir(dirPath + "/md5s" + specifyPath)){
                     md5FileRelativePath = "/md5s" + specifyPath + fileMd5 + "." +suffix;
-                    FileUtils.copyFile(file,new File(dirPath + md5FileRelativePath)); //文件复制
+                    FileTool.copyFile(file,new File(dirPath + md5FileRelativePath)); //文件复制
                 }
             }
 

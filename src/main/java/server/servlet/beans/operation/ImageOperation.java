@@ -1,18 +1,9 @@
 package server.servlet.beans.operation;
 
-import bottle.util.FileUtils;
+import bottle.util.FileTool;
 import bottle.util.Log4j;
-import net.coobird.thumbnailator.Thumbnails;
-import net.coobird.thumbnailator.geometry.Positions;
 import server.prop.WebProperties;
-
-import javax.imageio.ImageIO;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static server.servlet.beans.operation.OperationUtils.*;
@@ -133,9 +124,9 @@ public class ImageOperation{
             Log4j.info("图片("+ image + ")压缩"+  ( flag ? "成功":"失败") +",耗时:" + (System.currentTimeMillis() - time )+" 毫秒");
             if (flag) {
                 //重命名
-                FileUtils.rename(image,new File(filePathAndStrToSuffix(image.getAbsolutePath(),"-org"))) ; // 原文件 添加-org
+                FileTool.rename(image,new File(filePathAndStrToSuffix(image.getAbsolutePath(),"-org"))) ; // 原文件 添加-org
                 if (image.exists()) image.delete();
-                FileUtils.rename(temp,image) ; // 原文件 添加-org
+                FileTool.rename(temp,image) ; // 原文件 添加-org
             }
 
         }

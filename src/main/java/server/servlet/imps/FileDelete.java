@@ -1,6 +1,6 @@
 package server.servlet.imps;
 
-import bottle.util.FileUtils;
+import bottle.util.FileTool;
 import server.prop.WebProperties;
 import server.servlet.beans.result.Result;
 import server.servlet.iface.Mservlet;
@@ -25,7 +25,7 @@ public class FileDelete extends Mservlet {
         //文件删除
         ArrayList<String> list = filterJsonData(req.getHeader("delete-list"));
         if (list!=null){
-            list.forEach(path -> FileUtils.deleteFileOrDir(  WebProperties.rootPath + path));
+            list.forEach(path -> FileTool.deleteFileOrDir(  WebProperties.rootPath + path));
         }
         writeJson(resp,new Result().value(SUCCESS));
     }
