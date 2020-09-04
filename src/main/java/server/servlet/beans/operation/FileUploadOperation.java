@@ -108,7 +108,7 @@ public class FileUploadOperation {
             uploadResult.fileSize = file.length();
             uploadResult.success = true;
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
             uploadResult.error = "save file error";
         }
     }

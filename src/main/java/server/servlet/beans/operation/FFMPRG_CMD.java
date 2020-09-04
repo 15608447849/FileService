@@ -52,7 +52,7 @@ public class FFMPRG_CMD {
 //            }
 //            System.out.println(b.toString());
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         p.waitFor();
 //        p.waitFor(3, TimeUnit.MINUTES);
@@ -96,7 +96,7 @@ public class FFMPRG_CMD {
 
             return dist.exists() && dist.length() > 0;
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return false;
     }

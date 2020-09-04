@@ -62,7 +62,7 @@ public class OperationUtils {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return def;
     }
@@ -89,7 +89,7 @@ public class OperationUtils {
             out.close();
             flag = true;
         } catch (IOException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return flag;
     }*/
@@ -127,7 +127,7 @@ public class OperationUtils {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return flag;
     }
@@ -144,10 +144,11 @@ public class OperationUtils {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return flag;
     }
+
 
     private static final long SIZE = 1024 * 1024L; //1M 以上, 尝试 本地压缩
 
@@ -170,9 +171,18 @@ public class OperationUtils {
             Log4j.info(compress + " 压缩后大小: "+ fileSizeFormat(compress.length()) );
             return compress.length() > 0;
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return false;
+    }
+
+    public static void main(String[] args) {
+//        File file = new File("C:\\Users\\user\\Desktop\\1.png");
+//        File file2 = new File("C:\\Users\\user\\Desktop\\1_1.png");
+        File file3 = new File("C:\\Users\\user\\Desktop\\1_1_1.png");
+//        FFMPRG_CMD.imageCompress_(file2,file3);//使用ffmpeg
+                File f = imageCompress(file3,1024*1024);
+        System.out.println(f);
     }
 
     private static File imageCompress(final File image,long spSize){
@@ -188,7 +198,11 @@ public class OperationUtils {
                      .setReadTimeout(5 * 60 * 1000)
                      .setCallback(new HttpUtil.CallbackAbs() {
                          public void onResult(HttpUtil.Response response) {
-                             if (image.exists() ) image.delete();
+                             if (image.exists() ) {
+                                 if (image.delete()){
+                                     Log4j.info("图片压缩.删除文件 = "+ image);
+                                 }
+                             }
                              String url = response.getConnection().getHeaderField("location");
                              new HttpUtil.Request(url)
                                      .setDownloadFileLoc(image)
@@ -237,6 +251,7 @@ public class OperationUtils {
     //判断文件是否为图片
     public static boolean isImage(File file){
         String type = getFormatName(file);
+        if (type == null) return false;
         return type.equals("jpeg") || type.equals("png");
     }
 
@@ -248,7 +263,7 @@ public class OperationUtils {
             BufferedImage srcImg = ImageIO.read(image);
             return new int[]{srcImg.getWidth(), srcImg.getHeight()};
         } catch (IOException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return new int[]{-1,-1};
     }
@@ -341,12 +356,12 @@ public class OperationUtils {
             ImageIO.write(buffImg, "jpeg", os);
             return image.getAbsoluteFile();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         } finally {
             try {
                 if (null != os) os.close();
             } catch (Exception e) {
-                e.printStackTrace();
+                Log4j.error("文件服务错误",e);
             }
         }
         return image;
@@ -367,9 +382,9 @@ public class OperationUtils {
             is = url.openStream();
             bufferedImage = ImageIO.read(is);
         } catch (IOException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         } finally {
-            try { if(is!=null) is.close(); } catch (IOException e) { e.printStackTrace(); }
+            try { if(is!=null) is.close(); } catch (IOException e) { Log4j.error("文件服务错误",e); }
         }
         return bufferedImage;
     }
@@ -423,12 +438,12 @@ public class OperationUtils {
             ImageIO.write(buffImg, fileSuffix(image), os);
             return image.getAbsoluteFile();
         }catch (Exception e){
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }finally {
             try {
                 if (null != os) os.close();
             } catch (Exception e) {
-                e.printStackTrace();
+                Log4j.error("文件服务错误",e);
             }
         }
         return image;
@@ -454,7 +469,7 @@ public class OperationUtils {
                 return imageSrc.getAbsoluteFile();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return imageSrc;
     }

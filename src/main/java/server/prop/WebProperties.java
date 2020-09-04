@@ -9,8 +9,6 @@ import bottle.util.FileTool;
 @PropertiesFilePath("/web.properties")
 public class WebProperties {
 
-    @PropertiesName("web.ip")
-    public static String webIp = "127.0.0.1";
     @PropertiesName("web.port")
     public static int webPort = 80;
     @PropertiesName("web.file.directory")

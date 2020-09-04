@@ -21,7 +21,6 @@ import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
 public class FileDelete extends Mservlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req,resp);
         //文件删除
         ArrayList<String> list = filterJsonData(req.getHeader("delete-list"));
         if (list!=null){

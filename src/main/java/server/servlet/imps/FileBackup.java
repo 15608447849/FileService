@@ -1,6 +1,7 @@
 package server.servlet.imps;
 
-import bottle.backup.client.FtcBackupClient;
+
+import bottle.tcps.backup.client.FtcBackupClient;
 import server.prop.BackupProperties;
 import server.servlet.beans.operation.FileBackUpOperation;
 import server.servlet.beans.result.UploadResult;
@@ -28,7 +29,7 @@ public class FileBackup extends FileUpLoad {
             if (!BackupProperties.isAccess) return;
             //指定对应下标的文件的是否同步
             ArrayList<String> isSyncList = filterData(req.getHeader("is-sync"));
-            FtcBackupClient client =  BackupProperties.ftcBackupServer.getClient();
+//            FtcBackupClient client =  BackupProperties.ftcBackupServer.getClient();
             String rootPath = WebProperties.rootPath;
 
             UploadResult it;

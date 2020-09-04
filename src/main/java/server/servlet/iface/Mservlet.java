@@ -1,6 +1,7 @@
 package server.servlet.iface;
 
 import bottle.util.FileTool;
+import bottle.util.Log4j;
 import bottle.util.StringUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
@@ -38,7 +39,7 @@ public class Mservlet extends javax.servlet.http.HttpServlet {
                 }
             }
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return dataList;
     }
@@ -51,7 +52,7 @@ public class Mservlet extends javax.servlet.http.HttpServlet {
                 return new Gson().fromJson(json,new TypeToken<ArrayList<String>>(){}.getType());
             }
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         return null;
     }
@@ -88,7 +89,7 @@ public class Mservlet extends javax.servlet.http.HttpServlet {
             out.flush();
             if (isClose) out.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
     }
 

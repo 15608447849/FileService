@@ -9,14 +9,13 @@ import static server.servlet.beans.result.Result.RESULT_CODE.*;
  * Created by user on 2017/11/29.
  */
 public class Result {
-
-    private static Map<Integer,String> resultValMap = new HashMap<>();
+    private final static Map<Integer,String> resultValMap = new HashMap<>();
 
     /**
      * @Author: leeping
      * @Date: 2019/4/2 17:40
      */
-    public static interface RESULT_CODE {
+    public interface RESULT_CODE {
         int UNKNOWN = -1;
         int SUCCESS = 200;
         int EXCEPTION = -400;
@@ -32,18 +31,19 @@ public class Result {
         resultValMap.put(FILE_NOT_FOUNT,"找不到指定文件或目录");
     }
 
-    public int code = UNKNOWN;
+    private int code = UNKNOWN;
 
-    public String message = resultValMap.get(code);
+    private String message = resultValMap.get(code);
 
     public Object data = null;
 
-    public Result value(int code, String message,Object data){
+    private Result value(int code, String message, Object data){
         this.code = code;
         this.message = message;
         this.data = data;
         return this;
     }
+
     public Result value(int code, Object data){
         return value(code,resultValMap.get(code),data);
     }
@@ -55,6 +55,5 @@ public class Result {
     public Result value(int code){
         return value(code, resultValMap.get(code));
     }
-
 
 }

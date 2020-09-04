@@ -35,7 +35,6 @@ public class FileUpLoad extends Mservlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req,resp);
 
         List<UploadResult> resultList = null;
 

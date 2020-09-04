@@ -2,6 +2,7 @@ package server.servlet.imps;
 
 
 import bottle.util.GoogleGsonUtil;
+import bottle.util.Log4j;
 import server.servlet.beans.result.Result;
 import server.servlet.iface.Mservlet;
 
@@ -18,6 +19,7 @@ import java.util.Arrays;
 /**
  * @Author: leeping
  * @Date: 2019/8/8 11:10
+ * 获取图片指定点的像素颜色
  */
 public class ImagePixColor extends Mservlet {
 
@@ -57,7 +59,6 @@ public class ImagePixColor extends Mservlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req, resp);
         Result result = new Result();
         try {
             String json = req.getHeader("image-pix-color");
@@ -70,7 +71,7 @@ public class ImagePixColor extends Mservlet {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
         writeJson(resp,result);
     }

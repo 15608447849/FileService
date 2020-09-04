@@ -70,7 +70,6 @@ public class ImageSizeQuery extends Mservlet{
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doGet(req, resp);
         Result result = new Result();
         int[] maxImageLimit = new int[] {0,0};
         String maxSize = req.getHeader("image-size-limit"); //图片大小
@@ -153,7 +152,7 @@ public class ImageSizeQuery extends Mservlet{
                 isisCompressIng = false;
             });
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
             result.data = new ArrayList<>();
             result.value(EXCEPTION,e.toString());
         }

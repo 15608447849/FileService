@@ -1,7 +1,12 @@
 package server.servlet.imps;
 
+import bottle.properties.abs.ApplicationPropertiesBase;
+import bottle.properties.annotations.PropertiesFilePath;
+import bottle.properties.annotations.PropertiesName;
 import bottle.util.FileTool;
+import bottle.util.Log4j;
 import bottle.util.StringUtil;
+import bottle.util.TimeTool;
 import server.prop.WebProperties;
 import server.servlet.beans.operation.FileErgodicOperation;
 import server.servlet.beans.result.Result;
@@ -12,7 +17,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.*;
 
 import static server.servlet.beans.result.Result.RESULT_CODE.EXCEPTION;
 import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
@@ -20,7 +25,6 @@ import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
 public class FileErgodic extends Mservlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req, resp);
         Result result = new Result();
         String path = req.getHeader("specify-path");
         String sub = req.getHeader("ergodic-sub");
@@ -46,7 +50,7 @@ public class FileErgodic extends Mservlet {
             }
             result.value(SUCCESS);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
             result.data = new ArrayList<>();
             result.value(EXCEPTION,e.toString());
         }

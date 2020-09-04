@@ -29,7 +29,7 @@ public class ImageOperation{
                     try {
                         queue.wait();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        Log4j.error("文件服务错误",e);
                     }
                 }
             };
@@ -90,7 +90,7 @@ public class ImageOperation{
             //  5. 裁剪处理
             tailorHandler();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
     }
 

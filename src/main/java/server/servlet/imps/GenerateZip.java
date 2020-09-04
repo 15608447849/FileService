@@ -139,7 +139,6 @@ public class GenerateZip extends Mservlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req, resp);
         Result result = new Result().value(UNKNOWN);
         List<String> pathList = filterData(req.getHeader("path-list"));
         Log4j.info("ZIP-文件列表: "+ pathList);

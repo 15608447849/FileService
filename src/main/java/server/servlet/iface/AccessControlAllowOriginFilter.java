@@ -40,9 +40,9 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
                             "delete-time,"+
                             "image-base64,image-pix-color");
 
-            chain.doFilter(request, resp);
+            chain.doFilter(req, resp);
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Log4j.error("文件服务错误",e);
         }
     }
 
