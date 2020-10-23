@@ -36,7 +36,7 @@ public class FFMPRG_CMD {
     }
 
     private static String executeCmd(String cmd) throws IOException, InterruptedException {
-        Log4j.info("执行命令: " + cmd);
+//        Log4j.info("执行命令: " + cmd);
 
         StringBuffer b = new StringBuffer();
 

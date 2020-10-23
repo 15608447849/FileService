@@ -2,7 +2,7 @@ package server.servlet.imps;
 
 import bottle.threadpool.IOThreadPool;
 import bottle.util.Log4j;
-import server.prop.WebProperties;
+import server.prop.WebServer;
 import server.servlet.beans.operation.FFMPRG_CMD;
 import server.servlet.beans.operation.FileErgodicOperation;
 import server.servlet.beans.result.Result;
@@ -31,11 +31,11 @@ public class ImageSizeQuery extends Mservlet{
     private static IOThreadPool pool = new IOThreadPool();
 
     private static class ImageSize{
-        String url;
-        int width;
-        int height;
+        final String url;
+        final int width;
+        final int height;
 
-        public ImageSize(String url, int width, int height) {
+        private ImageSize(String url, int width, int height) {
             this.url = url;
             this.width = width;
             this.height = height;
@@ -45,16 +45,13 @@ public class ImageSizeQuery extends Mservlet{
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         super.doGet(req, resp);
-        pool.post(()->{
-            orgFileToFile();
-        });
+        pool.post(this::orgFileToFile);
         writeJson(resp,"OK");
     }
 
     private void orgFileToFile() {
 
-        new FileErgodicOperation(WebProperties.rootPath,
-                true)
+        new FileErgodicOperation(WebServer.rootFolderStr, true)
                 .setCallback(file -> {
                     String _suffix = file.getName().substring(file.getName().lastIndexOf(".")+1);
                     if (_suffix.equals("jpg") && file.getName().contains("-org")){
@@ -63,8 +60,8 @@ public class ImageSizeQuery extends Mservlet{
                         FFMPRG_CMD.imageCompress_(file,compress);
                     }
                     return true;
-                }).start();
-
+                })
+                .start();
 
     }
 
@@ -99,7 +96,7 @@ public class ImageSizeQuery extends Mservlet{
             long time = System.currentTimeMillis();
             Log4j.info("查询图片大小,开始遍历文件");
             //遍历查询所有文件
-            new FileErgodicOperation(WebProperties.rootPath,true)
+            new FileErgodicOperation(WebServer.rootFolderStr,true)
                     .setCallback(file -> {
 //                        Log4j.info("文件: "+ file);
                         if (suffix!=null){
@@ -111,10 +108,13 @@ public class ImageSizeQuery extends Mservlet{
                         if (isImage(file)){
                             int[] sizeArr = getImageSize(file);
                             if (sizeArr[0] != maxImageLimit[0] || sizeArr[1] != maxImageLimit[1]){
-                                list.add(new ImageSize(
-                                        file.getPath().replace("\\","/")
-                                        .replace(WebProperties.rootPath, WebProperties.domain),
-                                        sizeArr[0], sizeArr[1]));
+                                try {
+                                    list.add(
+                                            new ImageSize(file.getCanonicalPath().replace("\\","/").replace(WebServer.rootFolderStr, WebServer.domain), sizeArr[0], sizeArr[1])
+                                    );
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
                             }
                             if (isCompress){
                                 if (_compressLimit >0 ){
@@ -140,9 +140,11 @@ public class ImageSizeQuery extends Mservlet{
                         }
                         return true;
                     }).start();
+
             Log4j.info("查询图片大小,遍历文件结束,耗时: "+ (System.currentTimeMillis() - time));
             result.data = list;
             result.value(SUCCESS);
+
             pool.post(() -> {
                 if (isisCompressIng) return;
                 isisCompressIng = true;

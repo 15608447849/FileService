@@ -113,62 +113,63 @@ public class OperationUtils {
     }
 
     /**
-     * 图片 压缩/放大
+     * 图片裁剪
      *
      * @param w int 新宽度
      * @param h int 新高度
      */
     public static boolean imageResizeByGoogle(File image, File dist, int w, int h) {
-        boolean flag = false;
-        try {
-            try(FileOutputStream fos = new FileOutputStream(dist)){
-                Thumbnails.of(image).size(w,h).keepAspectRatio(false).outputQuality(1.0f).toOutputStream(fos);
-                flag = true;
-            }
-
-        } catch (IOException e) {
+        try(FileOutputStream fos = new FileOutputStream(dist)){
+            Thumbnails.of(image).size(w,h)
+                    .keepAspectRatio(false)
+                    .outputQuality(1.0f)
+                    .toOutputStream(fos);
+            return true;
+        }catch (IOException e){
             Log4j.error("文件服务错误",e);
         }
-        return flag;
+        return false;
     }
 
     public static boolean imageCompress_scale_min(File image,File dist){
-        boolean flag = false;
-        try {
-            try(FileOutputStream fos = new FileOutputStream(dist)){
-                Thumbnails.of(image)
-                        .scale(0.1)
-                        .outputQuality(0.1f)
-                        .toOutputStream(fos);
-                flag = true;
-            }
-
+        try(FileOutputStream fos = new FileOutputStream(dist)){
+            Thumbnails.of(image)
+                    .scale(0.1)
+                    .outputQuality(0.1f)
+                    .toOutputStream(fos);
+            return true;
         } catch (IOException e) {
             Log4j.error("文件服务错误",e);
         }
-        return flag;
+        return false;
     }
 
-
-    private static final long SIZE = 1024 * 1024L; //1M 以上, 尝试 本地压缩
 
     //原图,压缩后图片存储
     public static boolean imageCompress(File image,File compress,long spSize){
         try {
-            if (!image.exists() || image.length() == 0) throw  new FileNotFoundException(image.getAbsolutePath()) ;
-            if (!isImage(image)) throw  new IllegalArgumentException(image+" is not image") ;
-            boolean flag = false;
-            Log4j.info(image + " 压缩前大小: "+ fileSizeFormat(image.length()));
-            if ( image.length() > SIZE ){
-                Log4j.info("本地压缩: " + image);
-                flag = FFMPRG_CMD.imageCompress_(image,compress);//使用ffmpeg
+            if (!image.exists() || image.length() == 0) throw new FileNotFoundException(image.getCanonicalPath()) ;
+
+            if (!isImage(image)) throw  new IllegalArgumentException(image+" 不是标准图片类型") ;
+
+            if (spSize < 512*102L) spSize = 512*1024L;
+
+            if (spSize<image.length()){
+                return false; //不需要压缩文件
             }
-            if (!flag){
-                Log4j.info("网络压缩: " + image);
-                FileTool.copyFile(image,compress);
-                imageCompress(compress,spSize);
+
+            boolean isSuccess = false;
+//            Log4j.info(image + " 压缩前大小: "+ fileSizeFormat(image.length()));
+            if ( image.length() > spSize ){
+//                Log4j.info("本地压缩: " + image);
+                isSuccess = FFMPRG_CMD.imageCompress_(image,compress);//使用ffmpeg
             }
-            Log4j.info(compress + " 压缩后大小: "+ fileSizeFormat(compress.length()) );
+            if (!isSuccess){
+//                Log4j.info("网络压缩: " + image);
+                FileTool.copyFile(image,compress);// 复制图片到临时图片
+                imageCompress(compress,spSize,0);// 对临时图片进行处理
+            }
+//            Log4j.info(compress + " 压缩后大小: "+ fileSizeFormat(compress.length()) );
             return compress.length() > 0;
         } catch (Exception e) {
             Log4j.error("文件服务错误",e);
@@ -177,44 +178,50 @@ public class OperationUtils {
     }
 
     public static void main(String[] args) {
-//        File file = new File("C:\\Users\\user\\Desktop\\1.png");
-//        File file2 = new File("C:\\Users\\user\\Desktop\\1_1.png");
-        File file3 = new File("C:\\Users\\user\\Desktop\\1_1_1.png");
-//        FFMPRG_CMD.imageCompress_(file2,file3);//使用ffmpeg
-                File f = imageCompress(file3,1024*1024);
-        System.out.println(f);
+        File file = new File("C:\\Users\\user\\Desktop\\1.jpg");
+        long srcLen = file.length();
+
+        File f = new File("C:\\Users\\user\\Desktop\\11.jpg");
+        FFMPRG_CMD.imageCompress_(file,f);//使用ffmpeg
+
+//       File f = imageCompress(file,1024*1024); //使用
+        long  distLen = f.length();
+       System.out.println("减小大小: " + (srcLen - distLen));
     }
 
-    private static File imageCompress(final File image,long spSize){
+    private static File imageCompress(final File image,long spSize,int executeCount){
         try {
+
             HashMap<String, String> map = new HashMap<>();
             map.put("user-agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36");
+
+            final HttpUtil.CallbackAbs callback = new HttpUtil.CallbackAbs() {
+                public void onResult(HttpUtil.Response response) {
+                    if (image.exists() ) {
+                        if (image.delete()){
+//                                     Log4j.info("图片压缩.删除文件 = "+ image);
+                        }
+                    }
+                    String url = response.getConnection().getHeaderField("location");
+                    new HttpUtil.Request(url).setDownloadFileLoc(image).download().setLocalCacheByteMax(1024*1024).execute();
+                }
+            };
+
              new HttpUtil.Request("https://tinypng.com/web/shrink")
                      .setType(HttpUtil.Request.POST)
                      .setBinaryStreamFile(image)
                      .setBinaryStreamUpload()
                      .setLocalCacheByteMax(1460)
                      .setParams(map)
-                     .setReadTimeout(5 * 60 * 1000)
-                     .setCallback(new HttpUtil.CallbackAbs() {
-                         public void onResult(HttpUtil.Response response) {
-                             if (image.exists() ) {
-                                 if (image.delete()){
-                                     Log4j.info("图片压缩.删除文件 = "+ image);
-                                 }
-                             }
-                             String url = response.getConnection().getHeaderField("location");
-                             new HttpUtil.Request(url)
-                                     .setDownloadFileLoc(image)
-                                     .download()
-                                     .setLocalCacheByteMax(1024*1024)
-                                     .execute();
-                         }
-                     }).execute();
+                     .setReadTimeout(3 * 60 * 1000)
+                     .setCallback(callback)
+                     .execute();
+
         } catch (Exception ignored) { }
+
         File temp = image.getAbsoluteFile();
-        if (spSize > 0 && temp.length() > 0 && temp.length() > spSize) {
-            return imageCompress(temp,spSize);
+        if (executeCount<10 && temp.length() > spSize) {
+            return imageCompress(temp,spSize,++executeCount);
         }
         return temp;
     }

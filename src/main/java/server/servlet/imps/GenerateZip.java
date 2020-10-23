@@ -9,7 +9,7 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Zip;
 import org.apache.tools.ant.types.FileSet;
 import server.servlet.beans.result.Result;
-import server.prop.WebProperties;
+import server.prop.WebServer;
 import server.servlet.iface.Mservlet;
 
 import javax.servlet.ServletException;
@@ -43,7 +43,7 @@ public class GenerateZip extends Mservlet {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                File dict = new File(WebProperties.rootPath,ZIP_BATCH_DIR);
+                File dict = new File(WebServer.rootFolder,ZIP_BATCH_DIR);
                 if (dict.exists()){
                     File[] files = dict.listFiles();
                     for (File f : files){
@@ -73,7 +73,7 @@ public class GenerateZip extends Mservlet {
        List<File> list = new ArrayList<>();
        for (String path : paths){
            if (!path.startsWith(FileTool.SEPARATOR)) path = FileTool.SEPARATOR + path;// 保证前面有 '/'
-           File file = new File(WebProperties.rootPath  + path);
+           File file = new File(WebServer.rootFolder,  path);
            if (!file.exists()){
                //文件不存在
                continue;
@@ -92,35 +92,32 @@ public class GenerateZip extends Mservlet {
      */
     private File cpFileListToDir(List<String> paths) throws  Exception{
 
-        String dirPath = WebProperties.rootPath  + ZIP_BATCH_DIR +
-                EncryptUtil.encryption(ZIP_TEMP_DIR_PREV + System.currentTimeMillis());
+        String dirPath = WebServer.rootFolderStr+ZIP_BATCH_DIR+EncryptUtil.encryption(ZIP_TEMP_DIR_PREV + System.currentTimeMillis());
 
         List<File> fileList = checkPaths(paths);
 
         File dir = new File(dirPath);
         if (fileList.size() > 0){
-            if (!dir.exists()) dir.mkdirs();//创建目录
+            if (!dir.exists()) if (!dir.mkdirs()) throw new IllegalArgumentException("无法创建目录: "+ dirPath);//创建目录
+
             for (File file : fileList) {
                 File out = new File(dirPath,
-                        EncryptUtil.encryption(file.getAbsolutePath())+"_"+file.getName()+
-                                file.getName().substring(file.getName().lastIndexOf(".")));
+                        EncryptUtil.encryption(file.getAbsolutePath())+"_"+file.getName()+ file.getName().substring(file.getName().lastIndexOf("."))
+                );
                 FileUtils.copyFile(file, out); //复制文件
             }
         }
         return dir;
     }
 
-
     /**
      * 文件夹压缩zip
      * @param dir 指定文件夹
      * @return 压缩包相对路径
      */
-    private String compressZip(File dir){
-            String zipPath =  ZIP_BATCH_DIR + dir.getName() +".zip";
-
-            File zipFile = new File(WebProperties.rootPath + zipPath);
-            if (zipFile.exists()) zipFile.delete();
+    private String compressZip(File dir) throws Exception{
+            File zipFile = new File(WebServer.rootFolder , ZIP_BATCH_DIR + dir.getName() +".zip");
+            if (zipFile.exists()) if (!zipFile.delete()) throw new IllegalStateException("无法删除文件: "+ zipFile);
 
             Project prj = new Project();
             Zip zip = new Zip();
@@ -131,10 +128,8 @@ public class GenerateZip extends Mservlet {
             fileSet.setDir(dir);
             zip.addFileset(fileSet);
             zip.execute();
-
-            FileTool.deleteFileOrDir(dir.getAbsolutePath());
-
-            return zipPath;
+            FileTool.deleteFileOrDir(dir.getCanonicalPath());
+            return zipFile.getCanonicalPath();
     }
 
     @Override
@@ -142,21 +137,18 @@ public class GenerateZip extends Mservlet {
         Result result = new Result().value(UNKNOWN);
         List<String> pathList = filterData(req.getHeader("path-list"));
         Log4j.info("ZIP-文件列表: "+ pathList);
-
-
         try {
             if(pathList.size() == 0) {
                 throw new FileNotFoundException("没有指定需要打包的文件列表");
             }
-
             File dirt = cpFileListToDir(pathList);
             if (!dirt.exists()){
                 throw new FileNotFoundException("没有存在一个可批量打包的文件");
             }
 
-            String zipPath  = compressZip(dirt);
+            String zipLocalPath  = compressZip(dirt);
             //返回ZIP包URL
-            String url = WebProperties.domain +  zipPath;
+            String url = zipLocalPath.replace(WebServer.rootFolderStr,WebServer.domain);
             Log4j.info("ZIP URL : " + url);
             result.data = url;
             result.value(SUCCESS);

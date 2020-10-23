@@ -29,8 +29,6 @@ public class ImagePixColor extends Mservlet {
         int y;
     }
 
-
-
     /**
      * 取得图像上指定位置像素的 rgb 颜色分量。
      * @param image 源图像。

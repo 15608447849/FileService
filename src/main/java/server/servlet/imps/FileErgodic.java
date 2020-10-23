@@ -1,13 +1,9 @@
 package server.servlet.imps;
 
-import bottle.properties.abs.ApplicationPropertiesBase;
-import bottle.properties.annotations.PropertiesFilePath;
-import bottle.properties.annotations.PropertiesName;
 import bottle.util.FileTool;
 import bottle.util.Log4j;
 import bottle.util.StringUtil;
-import bottle.util.TimeTool;
-import server.prop.WebProperties;
+import server.prop.WebServer;
 import server.servlet.beans.operation.FileErgodicOperation;
 import server.servlet.beans.result.Result;
 import server.servlet.iface.Mservlet;
@@ -36,7 +32,7 @@ public class FileErgodic extends Mservlet {
         }
         if (StringUtil.isEmpty(path)) path = FileTool.SEPARATOR;
         try {
-            path = WebProperties.rootPath + checkDirPath(path);
+            path = WebServer.rootFolderStr + checkDirPath(path);
             //判断是否是一个文件
             File file = new File(path);
             if (file.isFile()){

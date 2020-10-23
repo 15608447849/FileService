@@ -41,7 +41,14 @@ dependencies {
     implementation 'org.apache.ant:ant:1.10.5'
     //google 图片处理
     implementation 'net.coobird:thumbnailator:0.4.8'
-   
+    //本地数据存储
+    implementation 'org.xerial:sqlite-jdbc:3.28.0'
+    
+    //华为OBS
+//    implementation 'com.huaweicloud:esdk-obs-java:3.20.6.1'
+    compile 'com.jamesmurty.utils:java-xmlbuilder:0.4'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.9.8'
+    compile 'com.squareup.okhttp3:okhttp:3.14.2'
 }
 
 shadowJar {

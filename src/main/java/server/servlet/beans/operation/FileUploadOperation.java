@@ -4,17 +4,14 @@ import bottle.util.EncryptUtil;
 import bottle.util.FileTool;
 import bottle.util.Log4j;
 import org.apache.commons.fileupload.FileItem;
-import server.prop.WebProperties;
+import server.prop.WebServer;
 import server.servlet.beans.result.UploadResult;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import static server.servlet.beans.operation.OperationUtils.getIndexValue;
-import static server.servlet.beans.result.Result.RESULT_CODE.EXCEPTION;
-import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
 
 /**
  * Created by user on 2017/12/14.
@@ -23,15 +20,14 @@ public class FileUploadOperation {
 
     private final ArrayList<String> specifyPaths; //指定的文件保存相对路径
     private final ArrayList<String> specifyNames;//指定的文件名
-    private final ArrayList<String> specifyMd5;//保存MD5文件名
     private final List<FileItem> fileItems;
 
-    public FileUploadOperation(ArrayList<String> specifyPaths, ArrayList<String> specifyNames, ArrayList<String> specifyMd5, List<FileItem> fileItems) {
+    public FileUploadOperation(ArrayList<String> specifyPaths, ArrayList<String> specifyNames, List<FileItem> fileItems) {
         this.specifyPaths = specifyPaths;
         this.specifyNames = specifyNames;
-        this.specifyMd5 = specifyMd5;
         this.fileItems = fileItems;
     }
+
     public  List<UploadResult>  execute() throws Exception{
         List<UploadResult> resultList = new ArrayList<>();
 
@@ -44,7 +40,7 @@ public class FileUploadOperation {
         String areaFileName;//域名中的文件名
         String specifyPath ;
         String specifyFileName ;
-        boolean isSaveMD5Name;
+
         UploadResult uploadResult;
 
         for (int i = 0 ;i< fileItems.size();i++) {
@@ -54,58 +50,55 @@ public class FileUploadOperation {
             areaFileName = fileItem.getName();
             specifyPath = getIndexValue(specifyPaths,i,"/defaults/"+areaName+"/");
             specifyFileName = getIndexValue(specifyNames,i,areaFileName);
-            isSaveMD5Name = getIndexValue(specifyMd5,i,false);
-            saveFile(fileItem,specifyPath,specifyFileName, isSaveMD5Name,uploadResult);
+
+            saveFile(fileItem,specifyPath,specifyFileName,uploadResult);
             Log4j.info("表单域名 :"+areaName+" , 表单名 :"+areaFileName+" , 上传文件: " + specifyPath+specifyFileName);
             resultList.add(uploadResult);//添加结果集合
         }
         return resultList;
     }
 
-    private void saveFile(FileItem fileItem, String specifyPath, String specifyFileName, boolean isSaveMD5Name, UploadResult uploadResult) {
+    private void saveFile(FileItem fileItem, String specifyPath, String specifyFileName,UploadResult uploadResult) {
+        //本地跟目录路径
+        final String rootPath = WebServer.rootFolderStr;
+        //url访问 相对全路径
+        final String localRelativePath = specifyPath + specifyFileName;
+       //目录, 本地绝对全路径
+        final String localAbsolutelyDictPath = rootPath + specifyPath;
+        //文件 本地绝对全路径
+        final String localAbsolutelyFilePath = rootPath + localRelativePath;
 
-        final String dirPath = WebProperties.rootPath; //本地绝对目录
-        //创建目录
-        if (!FileTool.checkDir(dirPath+specifyPath)){
-            uploadResult.error = "directory does not exist or created fail";
-            return;
-        }
-        //获取后缀
+        //获取文件后缀
         String suffix = "";
         if (specifyFileName.contains(".")){
             suffix = specifyFileName.substring(specifyFileName.lastIndexOf(".")); //包含 '.'
         }
-        //相对完成路径
-        String localRelativePath = specifyPath + specifyFileName;
 
-        String md5FileRelativePath = null;
+
+        //创建指定目录
+        if (!FileTool.checkDir(localAbsolutelyDictPath)){
+            uploadResult.error = "directory( "+localAbsolutelyDictPath+" ) does not exist or created fail";
+            return;
+        }
 
         try {
-            File file = new File(dirPath + localRelativePath);
-            boolean isWrite = true;
+            File file = new File(localAbsolutelyFilePath);
 
             if (file.exists()) {
-                isWrite = FileTool.deleteFile(file.getCanonicalPath());
-            }
-           if (isWrite) fileItem.write(file); //流写入文件
-            fileItem.delete(); //删除临时文件
-            String fileMd5 = EncryptUtil.getFileMd5ByString(file);//文件MD5
-
-            if (isSaveMD5Name){
-                //创建目录
-                if (FileTool.checkDir(dirPath + "/md5s" + specifyPath)){
-                    md5FileRelativePath = "/md5s" + specifyPath + fileMd5 + "." +suffix;
-                    FileTool.copyFile(file,new File(dirPath + md5FileRelativePath)); //文件复制
+                if (file.delete()){
+                    uploadResult.error = "file("+localAbsolutelyFilePath+") exists and cannot be deleted";
+                    return;
                 }
             }
+            fileItem.write(file); //流写入文件
+            fileItem.delete(); //删除临时文件
 
-            uploadResult.httpUrl = WebProperties.domain + localRelativePath;
-            uploadResult.relativePath = localRelativePath;
-            uploadResult.fileMd5 = fileMd5;
+            uploadResult.localAbsolutelyPath = localAbsolutelyFilePath;
+            uploadResult.httpUrl = localAbsolutelyFilePath.replace(rootPath,WebServer.domain);
             uploadResult.currentFileName = specifyFileName;
             uploadResult.suffix = suffix;
-            uploadResult.md5FileRelativePath = md5FileRelativePath;
             uploadResult.fileSize = file.length();
+            uploadResult.md5 = EncryptUtil.getFileMd5ByString(file);
             uploadResult.success = true;
         } catch (Exception e) {
             Log4j.error("文件服务错误",e);

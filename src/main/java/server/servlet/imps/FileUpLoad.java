@@ -1,13 +1,12 @@
 package server.servlet.imps;
 
-import bottle.threadpool.IOThreadPool;
 import bottle.util.Log4j;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import server.servlet.beans.result.Result;
 import server.servlet.beans.result.UploadResult;
-import server.prop.WebProperties;
+import server.prop.WebServer;
 import server.servlet.beans.operation.FileUploadOperation;
 import server.servlet.iface.Mservlet;
 
@@ -42,23 +41,16 @@ public class FileUpLoad extends Mservlet {
 
         //指定对应下标的文件保存路径
         ArrayList<String> pathList = checkDirPathByList(filterData(req.getHeader("specify-path")));
-
         //指定对应下标的文件保存文件名
         ArrayList<String> fileNameList = filterData( req.getHeader("specify-filename"));
 
-        //指定对应下标的文件是否保存成md5文件名
-        ArrayList<String> fileSaveMD5 = filterData(req.getHeader("save-md5"));
-
-        //指定对应下标的文件是否设置定时删除时间,单位秒 ,0秒 不删除
-
         try {
-
             if (!ServletFileUpload.isMultipartContent(req)){
                 throw new IllegalArgumentException("content-type is not 'multipart/form-data'");
             }
 
             DiskFileItemFactory diskFileItemFactory = new DiskFileItemFactory();
-            diskFileItemFactory.setRepository(new File(WebProperties.tempPath));
+            diskFileItemFactory.setRepository(WebServer.temporaryFolder);
             // 设定上传文件的值，如果上传文件大于缓冲区值，就可能在repository所代表的文件夹中产生临时文件，否则直接在内存中进行处理
             diskFileItemFactory.setSizeThreshold(CACHE_VAL);
 
@@ -68,7 +60,7 @@ public class FileUpLoad extends Mservlet {
             uploader.setHeaderEncoding("utf-8");
 
             List<FileItem> listItems = uploader.parseRequest(req);
-            resultList = new FileUploadOperation(pathList,fileNameList,fileSaveMD5,listItems).execute();
+            resultList = new FileUploadOperation(pathList,fileNameList,listItems).execute();
 
             final List<UploadResult> _resultlist = resultList;
 

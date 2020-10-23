@@ -1,7 +1,9 @@
 package server.servlet.imps;
 
 import bottle.util.FileTool;
-import server.prop.WebProperties;
+import bottle.util.Log4j;
+import server.HuaWeiOBS.HWOBSServer;
+import server.prop.WebServer;
 import server.servlet.beans.result.Result;
 import server.servlet.iface.Mservlet;
 
@@ -9,7 +11,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
@@ -23,8 +24,10 @@ public class FileDelete extends Mservlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         //文件删除
         ArrayList<String> list = filterJsonData(req.getHeader("delete-list"));
+        Log4j.info("删除文件:\n\t"+list);
         if (list!=null){
-            list.forEach(path -> FileTool.deleteFileOrDir(  WebProperties.rootPath + path));
+            list.forEach(path -> FileTool.deleteFileOrDir(  WebServer.rootFolderStr + path));
+            HWOBSServer.deleteFile(list);
         }
         writeJson(resp,new Result().value(SUCCESS));
     }
