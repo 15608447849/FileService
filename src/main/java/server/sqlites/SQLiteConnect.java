@@ -1,9 +1,8 @@
 package server.sqlites;
 
 
-import org.apache.poi.ss.formula.functions.T;
+import bottle.util.Log4j;
 
-import java.lang.ref.SoftReference;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -15,7 +14,7 @@ import java.util.Iterator;
  */
 class SQLiteConnect{
     static final private int OUT_TIME = 5 * 60 * 1000;
-    static final private int NORMAL = 0;
+    static final private int NOT_USED = 0;
     static final private int USED = 1;
     private static String storeLocationPath = "memory";
 
@@ -47,7 +46,7 @@ class SQLiteConnect{
             SQLiteConnect connect ;
             while (iterator.hasNext()){
                 connect = iterator.next();
-                if (connect.state == NORMAL){
+                if (connect.state == NOT_USED){
                     if (connect.isClose() || connect.isOutTime()){
                         iterator.remove();
                         connect.close();
@@ -58,24 +57,24 @@ class SQLiteConnect{
         }
     }
 
+    private static ThreadLocal<SQLiteConnect> local = new ThreadLocal<>();
+
     /**
      * 获取连接池
      */
     static SQLiteConnect getConnect(){
-        SQLiteConnect connect = null;
-        if (mConnectPools.size()>0){
-            Iterator<SQLiteConnect> iterator = mConnectPools.iterator();
-            while (iterator.hasNext()){
-                connect = iterator.next();
-                if (!connect.isClose() && connect.state == SQLiteConnect.NORMAL){
-                  break;
-                }
-                connect = null;
-            }
+        SQLiteConnect connect = local.get();
+
+        if (connect==null || connect.isClose()){
+            connect = null;
+            local.set(null);
         }
+
         if (connect == null){
             connect = new SQLiteConnect();
             mConnectPools.add(connect);
+            local.set(connect);
+            Log4j.info(Thread.currentThread()+" 创建数据库连接, 当前总连接数: " + mConnectPools.size());
         }
         connect.state = USED;
         return connect;
@@ -83,15 +82,14 @@ class SQLiteConnect{
 
     static void releaseConnect(SQLiteConnect connect){
         if (connect == null) return;
-
         connect.updateTime();
-        connect.state = NORMAL;
+        connect.state = NOT_USED;
     }
 
 
     private Connection connection;
     private long time;
-    private int state = NORMAL;
+    private int state = NOT_USED;
 
     private SQLiteConnect() {
         try {
@@ -127,7 +125,7 @@ class SQLiteConnect{
     public void close(){
         if (!isClose()){
             try {
-                connection.commit();
+                Log4j.info("释放SQL连接: "+ connection);
                 connection.close();
             } catch (SQLException e) {
                 e.printStackTrace();

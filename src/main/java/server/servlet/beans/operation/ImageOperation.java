@@ -74,9 +74,13 @@ public class ImageOperation{
         //循环读取队列中的任务
         while (true){
             try{
-                executeHandler();
-                synchronized (TYPE){
-                    TYPE.wait(60 * 60 * 1000L);
+                List<SQLiteUtils.StorageItem> list = getListByType(TYPE);
+                if (list.size() != 0) {
+                    executeHandler(list);
+                }else{
+                    synchronized (TYPE){
+                        TYPE.wait();
+                    }
                 }
             }catch (Exception e){
                 e.printStackTrace();
@@ -84,8 +88,8 @@ public class ImageOperation{
         }
     };
 
-    private static void executeHandler() {
-        List<SQLiteUtils.StorageItem> list = getListByType(TYPE);
+    private static void executeHandler(List<SQLiteUtils.StorageItem> list) {
+
         for (SQLiteUtils.StorageItem it : list){
             ImageOperation imageOperation = GoogleGsonUtil.jsonToJavaBean(it.value,ImageOperation.class);
             boolean isDelete;

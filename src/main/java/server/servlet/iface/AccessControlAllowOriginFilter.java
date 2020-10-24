@@ -26,8 +26,11 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
         HttpServletResponse resp = (HttpServletResponse) response;
 
         try {
-            resp.setCharacterEncoding("UTF-8");
+
             req.setCharacterEncoding("UTF-8");
+
+            resp.setHeader("Content-type", "text/html;charset=UTF-8");
+            resp.setCharacterEncoding("UTF-8");
 
             resp.addHeader("Access-Control-Allow-Origin", "*");
             resp.addHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, DELETE, TRACE, OPTIONS");

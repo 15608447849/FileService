@@ -1,18 +1,15 @@
 package server.sqlites;
 
-import bottle.util.FileTool;
+
+
 import bottle.util.StringUtil;
 import bottle.util.TimeTool;
-import server.prop.WebServer;
-
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
-
 import static server.prop.WebServer.rootFolder;
-import static server.prop.WebServer.rootFolderStr;
 
 /**
  * Created by user on 2017/6/30.
@@ -41,7 +38,7 @@ public class SQLiteUtils {
     }
 
     /**  执行新增修改删除sql */
-    public static int executeWriteSQL(String sql,Object...params){
+    private static int executeWriteSQL(String sql, Object... params){
         int affectedRows = -1;
         PreparedStatement pst = null;
         SQLiteConnect connection = null;
@@ -193,7 +190,7 @@ public class SQLiteUtils {
                 if (res>0) return true;
             }
         }
-        //直接插入
+        // 直接插入
         final String SQL_INSERT = String.format("INSERT INTO %s (%s,%s,%s,%s) VALUES (?,?,?,?);",LIST_TABLE,LIST_LOCAL_TABLE_TYPE,LIST_LOCAL_TABLE_VALUE,LIST_LOCAL_TABLE_IDENTIFICATION,LIST_LOCAL_TABLE_VERSION);
         int res = executeWriteSQL(SQL_INSERT,listType,value,identification,dataTime);
         return res>0;
@@ -205,7 +202,6 @@ public class SQLiteUtils {
             return false;
         }
         final String SQL = String.format( "DELETE FROM %s WHERE %s=? AND %s=? AND %s=?;",LIST_TABLE,LIST_LOCAL_TABLE_TYPE,LIST_LOCAL_TABLE_VALUE,LIST_LOCAL_TABLE_IDENTIFICATION);
-
         int res = executeWriteSQL(SQL,listType,value,identification);
         return res>0;
     }
@@ -241,6 +237,13 @@ public class SQLiteUtils {
         List<Object[]> lines = executeQuerySQL(SQL_SELECT,listType);
         for (Object[] rows : lines) list.add(new StorageItem(rows));
         return list;
+    }
+
+    //根据标识查询是否存在
+    public static boolean existIdentity(String listType,String identification){
+        final String SQL_SELECT = String.format("SELECT * FROM %s WHERE %s=? AND %s=?;",LIST_TABLE,LIST_LOCAL_TABLE_TYPE,LIST_LOCAL_TABLE_IDENTIFICATION);
+        List<Object[]> lines = executeQuerySQL(SQL_SELECT,listType,identification);
+        return lines.size()>0;
     }
 
     static {

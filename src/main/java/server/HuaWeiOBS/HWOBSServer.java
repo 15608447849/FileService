@@ -247,14 +247,13 @@ public class HWOBSServer {
     }
 
     //文件上传
-    public static boolean uploadLocalFile(String localPath,String remotePath){
+    static boolean uploadLocalFile(String localPath, String remotePath){
 
         try {
             File file = new File(localPath);
-
-            if (!file.exists()) return true;
-
-            if (file.length() > 5 * 1024 * 1024 * 1024L) return true;
+            if (!file.exists() || file.length() > 5 * 1024 * 1024 * 1024L) {
+                return true;
+            }
 
             if (remotePath.startsWith("/")){
                 if (remotePath.length()>1){
@@ -270,23 +269,25 @@ public class HWOBSServer {
             request.setPartSize( file.length() / 10);
             request.setEnableCheckpoint(true);
 
-            /*
-            request.setProgressInterval(1024 * 1024L);
+
+            request.setProgressInterval(10 * 1024 * 1024L);
             request.setProgressListener(status -> {
                 // 获取上传平均速率
-                System.out.println("上传平均速率 :" + status.getAverageSpeed());
+//                System.out.println("上传平均速率 :" + status.getAverageSpeed());
                 // 获取上传进度百分比
-                System.out.println("上传进度百分比:" + status.getTransferPercentage());
+//                System.out.println(localPath+ " 上传进度百分比:" + status.getTransferPercentage());
             });
-            */
+
 
             long time = System.currentTimeMillis();
             CompleteMultipartUploadResult response = obsClient_upload.uploadFile(request);
-            Log4j.info(
-                    "上传文件("+localPath+" -> "+remotePath+") 上传耗时:"
-                    + TimeTool.formatDuring(System.currentTimeMillis() - time)+"\n\t访问路径: "
-                    + response.getObjectUrl()
-            );
+
+//            Log4j.info(
+//                    "上传文件("+localPath+") 耗时:"
+//                    + TimeTool.formatDuring(System.currentTimeMillis() - time)
+//                            +"\n\t访问路径: "
+//                    + response.getObjectUrl()
+//            );
 
             try {
                 SetObjectMetadataRequest requestMeta = new SetObjectMetadataRequest(bucketName, remotePath);
@@ -308,8 +309,8 @@ public class HWOBSServer {
         return false;
     }
 
-    //查询文件是否存在,存在返回MD5
-    public static String existFile(String remotePath){
+    //存在返回MD5
+    static String getObsFileMD5(String remotePath){
         if (remotePath.startsWith("/")){
             if (remotePath.length()>1){
                 remotePath = remotePath.substring(1);

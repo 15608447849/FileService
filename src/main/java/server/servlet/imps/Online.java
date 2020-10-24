@@ -1,67 +1,97 @@
 package server.servlet.imps;
 
-import bottle.threadpool.IOThreadPool;
+
 import bottle.util.EncryptUtil;
+
+
 import bottle.util.Log4j;
-import server.HuaWeiOBS.HWOBSServer;
+import bottle.util.TimeTool;
 import server.HuaWeiOBS.OBSUploadPoolUtil;
 import server.prop.WebServer;
 import server.servlet.beans.operation.FileErgodicOperation;
 import server.servlet.iface.Mservlet;
-import sun.security.provider.MD5;
+
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
+
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 public class Online extends Mservlet {
 
-    private static boolean isExecute;
+    private static Set<String> scannedSet = new HashSet<>();
 
+    static {
+        new Timer(true).schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (isIng) return;
+                scannedSet.clear();
+            }
+        },0,60 * 60 * 1000L);
+    }
+
+    private static boolean isIng = false;
+    private static long startTime;
+    private static long endTime;
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
         final String file_ergodic_path = req.getParameter("file_ergodic_path");
-        if (file_ergodic_path!=null){
-            new Thread(() -> {
-                try {
-                    executeErgodic(WebServer.rootFolderStr + file_ergodic_path);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }).start();
+        final int file_ergodic_max = Integer.parseInt(req.getParameter("file_ergodic_max"));
+
+        String str = "current scanned size: "+ scannedSet.size();
+
+        if (!isIng){
+            isIng = true;
+            str += "\tstart scanner, last used time: " + TimeTool.formatDuring((endTime - startTime));
+            startTime = System.currentTimeMillis();
+            final  Runnable runnable = () -> {
+                executeErgodic( file_ergodic_path,file_ergodic_max);
+                isIng = false;
+                endTime = System.currentTimeMillis();
+            };
+            Thread thread = new Thread(runnable);
+            thread.setDaemon(true);
+            thread.start();
+
+        }else{
+            str += "\tscanner ing, current used time: "+ TimeTool.formatDuring((System.currentTimeMillis() - startTime));
         }
 
-        writeString(resp,"online",true);
+
+        writeString(resp,"online\n"+str,true);
     }
 
-    private static void executeErgodic(String path) {
-        if (isExecute) return;
-        isExecute = true;
-        FileErgodicOperation op = new FileErgodicOperation(path, true);
-        op.setCallback(new FileErgodicOperation.Callback() {
-            @Override
-            public boolean filterFile(File file) {
+    private static List<String> executeErgodic(String path,int max) {
 
+        FileErgodicOperation op = new FileErgodicOperation(WebServer.rootFolderStr + path, true);
+        List<String> list = new ArrayList<>();
+
+        op.setCallback(file -> {
+
+            if (max==0 || list.size()<max) {
                 try {
-                    String relativePath = file.getCanonicalPath().replace(WebServer.rootFolderStr,"");
-                    String md5 = EncryptUtil.getFileMd5ByString(file);
-                    boolean isExist = OBSUploadPoolUtil.checkOBSFileExist(relativePath,md5);
-                    if (isExist){
-                        boolean isAdd = OBSUploadPoolUtil.addFileToQueue(file.getCanonicalPath());
-                        if (!isAdd){
-                            Log4j.info("添加OBS上传文件失败: "+ file);
+                    String localFilePath = file.getCanonicalPath();
+                    if (scannedSet.add(localFilePath)){
+                        boolean isAdd = OBSUploadPoolUtil.addFileToQueue(localFilePath);
+                        if (isAdd){
+                            list.add(localFilePath);
                         }
                     }
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                return false;
             }
+
+            return false;
         });
         op.start();
-        isExecute = false;
+
+        return list;
     }
 }
