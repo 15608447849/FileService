@@ -2,6 +2,7 @@ package server.sqlites;
 
 
 
+import bottle.util.Log4j;
 import bottle.util.StringUtil;
 import bottle.util.TimeTool;
 import java.io.File;
@@ -9,7 +10,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
-import static server.prop.WebServer.rootFolder;
+
 
 /**
  * Created by user on 2017/6/30.
@@ -38,7 +39,7 @@ public class SQLiteUtils {
     }
 
     /**  执行新增修改删除sql */
-    private static int executeWriteSQL(String sql, Object... params){
+    synchronized private static int executeWriteSQL(String sql, Object... params){
         int affectedRows = -1;
         PreparedStatement pst = null;
         SQLiteConnect connection = null;
@@ -218,22 +219,12 @@ public class SQLiteUtils {
             this.identity =  String.valueOf(rows[2]);
             this.time =  String.valueOf(rows[3]);
         }
-
-        @Override
-        public String toString() {
-            return "\t{" +
-                    "type='" + type + '\'' +
-                    ", value='" + value + '\'' +
-                    ", identity='" + identity + '\'' +
-                    ", time='" + time + '\'' +
-                    '}'+"";
-        }
     }
 
-    //获取列表 根据时间排序
-    public static List<StorageItem> getListByType(String listType){
+    //获取列表 根据时间倒序
+    public static List<StorageItem> getListByType(String listType,int max){
         List<StorageItem> list = new ArrayList<>();
-        final String SQL_SELECT = String.format("SELECT * FROM %s WHERE %s=?;",LIST_TABLE,LIST_LOCAL_TABLE_TYPE);
+        final String SQL_SELECT = String.format("SELECT * FROM %s WHERE %s=? ORDER BY %s DESC %s;",LIST_TABLE,LIST_LOCAL_TABLE_TYPE,LIST_LOCAL_TABLE_VERSION,(max>0?"LIMIT "+max : ""));
         List<Object[]> lines = executeQuerySQL(SQL_SELECT,listType);
         for (Object[] rows : lines) list.add(new StorageItem(rows));
         return list;
@@ -246,30 +237,10 @@ public class SQLiteUtils {
         return lines.size()>0;
     }
 
-    static {
-        try {
-            String storePath = rootFolder.getParentFile().getCanonicalPath() + File.separator+"local.db";
+    public static void initLoad(String storePath){
             SQLiteConnect.setStoreLocationPath(storePath);
             initMapTable();
             initListTable();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+            Log4j.info("SQLiter 启动, 本地路径: " + storePath);
     }
-
-    public static void main(String[] args) {
-        addListValue("文件同步OBS列表","/a/b/c/1.png","md5-1",null);
-        addListValue("文件同步OBS列表","/a/b/c/2.png","md5-2",null);
-        addListValue("文件同步OBS列表","/a/b/c/3.png","md5-3",null);
-        List<StorageItem> list = getListByType("文件同步OBS列表");
-        System.out.println(list);
-        for (StorageItem it : list){
-            removeListValue("文件同步OBS列表",it.value,null);
-        }
-        list = getListByType("文件同步OBS列表");
-        System.out.println(list);
-    }
-
-
-
 }

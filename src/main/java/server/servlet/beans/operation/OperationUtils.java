@@ -313,6 +313,7 @@ public class OperationUtils {
     }
 
     //添加文字水印
+    @SuppressWarnings("unchecked")
     public static File markImageByText(String logoText, File image, int degree, Color color, float alpha, int place) {
         OutputStream os = null;
         try {

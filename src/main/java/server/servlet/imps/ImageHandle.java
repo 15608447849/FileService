@@ -16,6 +16,7 @@ import static server.servlet.beans.operation.OperationUtils.*;
 /**
  * @Author: leeping
  * @Date: 2019/4/1 13:48
+ * 图片处理
  */
 public class ImageHandle extends FileUpLoad{
     // 对应表单下标 tab1;tab2;tab3 ...

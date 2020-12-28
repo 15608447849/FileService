@@ -13,7 +13,7 @@ import java.util.Iterator;
  * Created by user on 2017/7/3.
  */
 class SQLiteConnect{
-    static final private int OUT_TIME = 5 * 60 * 1000;
+    static final private int OUT_TIME = 3 * 60 * 1000;
     static final private int NOT_USED = 0;
     static final private int USED = 1;
     private static String storeLocationPath = "memory";
@@ -125,7 +125,6 @@ class SQLiteConnect{
     public void close(){
         if (!isClose()){
             try {
-                Log4j.info("释放SQL连接: "+ connection);
                 connection.close();
             } catch (SQLException e) {
                 e.printStackTrace();

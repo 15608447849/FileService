@@ -37,7 +37,15 @@ public class FileErgodicOperation extends SimpleFileVisitor<Path> {
         }
        //排序创建时间排序 - 最新最后
         try {
-            pathList.sort(Comparator.comparingLong(p -> p.toFile().lastModified()));
+            pathList.sort((p1, p2) -> {
+                long diff = p1.toFile().lastModified() - p2.toFile().lastModified();
+                if (diff > 0)
+                    return -1;//倒序正序控制
+                else if (diff == 0)
+                    return 0;
+                else
+                    return 1;//倒序正序控制
+            });
         } catch (Exception e1) {
             e1.printStackTrace();
         }

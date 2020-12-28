@@ -22,47 +22,13 @@ import static server.sqlites.SQLiteUtils.*;
  * 图片处理
  */
 public class ImageOperation{
-//    private static final ConcurrentLinkedQueue<ImageOperation> queue = new ConcurrentLinkedQueue<>();
-//
-//    private static final Runnable RUNNABLE = () -> {
-//        //循环读取队列中的任务
-//        while (true){
-//            ImageOperation op = queue.poll();
-//            if (op!=null) {
-//                op.execute();
-//            } else {
-//                synchronized (queue){
-//                    try {
-//                        queue.wait();
-//                    } catch (InterruptedException e) {
-//                        Log4j.error("文件服务错误",e);
-//                    }
-//                }
-//            };
-//        }
-//    };
-//
-//    public static void add(String imagePath, int[] maxImageLimit, boolean isCompress, long spSize, boolean isLogo, boolean minScaleExist,String tailorStr){
-//        if (imagePath == null) return;
-//        queue.add(new ImageOperation(imagePath,maxImageLimit,isCompress,spSize,isLogo,minScaleExist,tailorStr));
-//        synchronized (queue){
-//            queue.notifyAll();
-//        }
-//    }
-
-//    static {
-//        Thread t = new Thread(RUNNABLE);
-//        t.setDaemon(true);
-//        t.start();
-//    }
 
     private static final String TYPE = "IMAGE_FILE_HANDLE_QUEUE";
 
     public static void add(String imagePath, int[] maxImageLimit, boolean isCompress, long spSize, boolean isLogo, boolean minScaleExist, String tailorStr){
-
-        Log4j.info("文件图片处理: "+ imagePath);
         String json = GoogleGsonUtil.javaBeanToJson(new ImageOperation(imagePath,maxImageLimit,isCompress,spSize,isLogo,minScaleExist,tailorStr));
         boolean isAdd = addListValue(TYPE,json,imagePath,null);
+        Log4j.info("添加文件处理: "+ imagePath + "  "+ isAdd);
         if (isAdd){
             synchronized (TYPE){
                 TYPE.notifyAll();
@@ -74,7 +40,7 @@ public class ImageOperation{
         //循环读取队列中的任务
         while (true){
             try{
-                List<SQLiteUtils.StorageItem> list = getListByType(TYPE);
+                List<SQLiteUtils.StorageItem> list = getListByType(TYPE,100);
                 if (list.size() != 0) {
                     executeHandler(list);
                 }else{
@@ -102,17 +68,6 @@ public class ImageOperation{
         }
     }
 
-
-    static {
-        Thread t = new Thread(RUNNABLE);
-        t.setDaemon(true);
-        t.start();
-    }
-
-    public static void start(){
-        Log4j.info("启动图片处理线程");
-    }
-
     //源图片路径
     private String imagePath;
     //图片最大限制 ,过大将裁剪,过小将设置白底
@@ -136,7 +91,6 @@ public class ImageOperation{
         this.isLogo = isLogo;
         this.minScaleExist = minScaleExist;
         this.tailorStr = tailorStr;
-
     }
 
     private File image;
@@ -161,7 +115,7 @@ public class ImageOperation{
                 tailorHandler();
             }
            OBSUploadPoolUtil.addFileToQueue(filePathAll);
-            return true;
+           return true;
         } catch (Exception e) {
             Log4j.error("文件服务错误",e);
         }
@@ -234,5 +188,15 @@ public class ImageOperation{
             }
     }
 
+    static {
+        Thread t = new Thread(RUNNABLE);
+        t.setDaemon(true);
+        t.setName("图片处理-"+t.getId());
+        t.start();
+    }
+
+    public static void start(){
+        Log4j.info("启动图片处理");
+    }
 
 }

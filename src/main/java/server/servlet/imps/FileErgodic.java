@@ -18,29 +18,56 @@ import java.util.*;
 import static server.servlet.beans.result.Result.RESULT_CODE.EXCEPTION;
 import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
 
+// 文件遍历 查询是否存在文件
 public class FileErgodic extends Mservlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.setHeader("Content-type", "text/html;charset=UTF-8");
         Result result = new Result();
-        String path = req.getHeader("specify-path");
-        String sub = req.getHeader("ergodic-sub");
-        boolean isSub = true;
-        if (!StringUtil.isEmpty(sub)){
-            try{
-                isSub = Boolean.parseBoolean(sub);
-            }catch (Exception ignored){}
-        }
-        if (StringUtil.isEmpty(path)) path = FileTool.SEPARATOR;
+
         try {
+
+            String path = req.getHeader("specify-path");
+            String sub = req.getHeader("ergodic-sub");
+            String filter = req.getHeader("filter-array");
+
+            boolean isSub = true;
+            if (!StringUtil.isEmpty(sub)){
+                isSub = Boolean.parseBoolean(sub);
+            }
+
+            String[] filterArrays = null;
+            if (!StringUtil.isEmpty(filter)){
+                filterArrays = filter.split(",");
+            }
+
+            if (StringUtil.isEmpty(path)) throw new IllegalAccessException("请设置需要遍历的目录路径");
+
+            path = path.replace(WebServer.domain,"");
             path = WebServer.rootFolderStr + checkDirPath(path);
+
             //判断是否是一个文件
             File file = new File(path);
             if (file.isFile()){
                 result.data = true;
-//                Log4j.info("存在文件:"+ path);
             }else if (file.isDirectory()){
-                result.data = new FileErgodicOperation(path,isSub).start();
-//                Log4j.info("遍历目录:"+ path +" list: "+ result.data);
+
+                FileErgodicOperation op = new FileErgodicOperation(path,isSub);
+                if (filterArrays!=null && filterArrays.length>0){
+                    String[] finalFilterArrays = filterArrays;
+                    op.setCallback(new FileErgodicOperation.Callback() {
+                        @Override
+                        public boolean filterFile(File file) {
+                            String fileName = file.getName();
+                            for (String str: finalFilterArrays){
+                                if (fileName.contains(str)) return true;
+                            }
+                            return false;
+                        }
+                    });
+                }
+
+                result.data = op.start();
             }else{
                 result.data = false;
             }

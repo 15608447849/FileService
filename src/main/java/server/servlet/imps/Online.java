@@ -1,14 +1,16 @@
 package server.servlet.imps;
 
 
-import bottle.util.EncryptUtil;
+import bottle.util.*;
 
 
-import bottle.util.Log4j;
-import bottle.util.TimeTool;
+import io.undertow.servlet.Servlets;
+import io.undertow.servlet.api.ServletInfo;
+import server.HuaWeiOBS.HWOBSServer;
 import server.HuaWeiOBS.OBSUploadPoolUtil;
 import server.prop.WebServer;
 import server.servlet.beans.operation.FileErgodicOperation;
+import server.servlet.beans.operation.SysUtils;
 import server.servlet.iface.Mservlet;
 
 
@@ -17,81 +19,70 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
 import java.util.*;
 
+import static server.servlet.beans.operation.RuntimeUtils.*;
+
+// 回复当前文件服务器的信息/状态
 public class Online extends Mservlet {
 
-    private static Set<String> scannedSet = new HashSet<>();
-
-    static {
-        new Timer(true).schedule(new TimerTask() {
-            @Override
-            public void run() {
-                if (isIng) return;
-                scannedSet.clear();
-            }
-        },0,60 * 60 * 1000L);
-    }
-
-    private static boolean isIng = false;
-    private static long startTime;
-    private static long endTime;
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.setHeader("Content-type", "text/html;charset=UTF-8");
 
-        final String file_ergodic_path = req.getParameter("file_ergodic_path");
-        final int file_ergodic_max = Integer.parseInt(req.getParameter("file_ergodic_max"));
 
-        String str = "current scanned size: "+ scannedSet.size();
-
-        if (!isIng){
-            isIng = true;
-            str += "\tstart scanner, last used time: " + TimeTool.formatDuring((endTime - startTime));
-            startTime = System.currentTimeMillis();
-            final  Runnable runnable = () -> {
-                executeErgodic( file_ergodic_path,file_ergodic_max);
-                isIng = false;
-                endTime = System.currentTimeMillis();
-            };
-            Thread thread = new Thread(runnable);
-            thread.setDaemon(true);
-            thread.start();
-
+        String params = req.getParameter("state");
+        if (params==null){
+            HashMap<String,String> map  = new HashMap<>();
+            //文件下载地址
+            map.put("download", WebServer.domain);
+            //文件上传地址
+            map.put("upload", WebServer.domain + "/upload");
+            //文件遍历遍历
+            map.put("ergodic", WebServer.domain + "/ergodic");
+            //文件删除地址
+            map.put("delete", WebServer.domain + "/delete");
+            //文件批量下载
+            map.put("zip", WebServer.domain + "/zip");
+            //obs下载地址
+            map.put("obs_download",HWOBSServer.convertLocalFileToOBSUrl(""));
+            //cnd
+            map.put("cnd_download",HWOBSServer.convertLocalFileToCDNUrl(""));
+            writeJson(resp,map);
         }else{
-            str += "\tscanner ing, current used time: "+ TimeTool.formatDuring((System.currentTimeMillis() - startTime));
+            ThreadMXBean tmx = ManagementFactory.getThreadMXBean();
+
+            DecimalFormat percent = new DecimalFormat("0.00%");
+
+            String str =
+                    "\n\t" + "当前进程" + "\t" + ManagementFactory.getRuntimeMXBean().getName() +
+
+                    "\n\t" + "系统 CUP 内核数" + "\t" + Runtime.getRuntime().availableProcessors() +
+                    "\n\t" + "系统 CPU 使用率" + "\t" + percent.format(getSystemCpuLoad()) +
+
+                    "\n\t" + "系统 物理内存 总大小" + "\t" + byteLength2StringShow(getTotalPhysicalMemorySize()) +
+                    "\n\t" + "系统 物理内存 已使用" + "\t" + byteLength2StringShow(getUsedPhysicalMemorySize()) +
+
+                    "\n\t" + "JVM 内存 最大值" + "\t" + byteLength2StringShow(getJvmMaxMemory()) +
+                    "\n\t" + "JVM 内存 总大小" + "\t" + byteLength2StringShow(getJvmTotalMemory()) +
+                    "\n\t" + "JVM 内存 已使用" + "\t" + byteLength2StringShow(getJvmUsedMemory()) +
+
+                    "\n\t" + "JVM CPU 已使用" + "\t" + percent.format(getProcessCpuLoad()) +
+                    "\n\t" + "JVM CPU 已使用(线程总和)" + "\t" + percent.format(SysUtils.getInstance().getProcessCpu()) +
+
+                     "\n\t" + "JVM 线程 总数" + "\t" + tmx.getThreadCount() +
+                    "\n\t" + "JVM 线程 活跃数" + "\t" + Thread.activeCount() +
+
+                    "\n\t" + "已运行时长 " + "\t" + TimeTool.formatDuring((System.currentTimeMillis() - WebServer.startTime)) ;
+
+            writeString(resp, str,true);
         }
 
-
-        writeString(resp,"online\n"+str,true);
     }
 
-    private static List<String> executeErgodic(String path,int max) {
 
-        FileErgodicOperation op = new FileErgodicOperation(WebServer.rootFolderStr + path, true);
-        List<String> list = new ArrayList<>();
-
-        op.setCallback(file -> {
-
-            if (max==0 || list.size()<max) {
-                try {
-                    String localFilePath = file.getCanonicalPath();
-                    if (scannedSet.add(localFilePath)){
-                        boolean isAdd = OBSUploadPoolUtil.addFileToQueue(localFilePath);
-                        if (isAdd){
-                            list.add(localFilePath);
-                        }
-                    }
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            return false;
-        });
-        op.start();
-
-        return list;
-    }
 }

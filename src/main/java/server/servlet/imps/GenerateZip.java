@@ -25,8 +25,7 @@ import static server.servlet.beans.result.Result.RESULT_CODE.*;
 /**
  * Created by user on 2018/12/17.
  * 传递 需要打包下载的文件的相对路径
- * 生成zip包
- * 请求重定向
+ * 生成zip包 发送zip地址
  */
 public class GenerateZip extends Mservlet {
 
@@ -134,6 +133,7 @@ public class GenerateZip extends Mservlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.setHeader("Content-type", "text/html;charset=UTF-8");
         Result result = new Result().value(UNKNOWN);
         List<String> pathList = filterData(req.getHeader("path-list"));
         Log4j.info("ZIP-文件列表: "+ pathList);

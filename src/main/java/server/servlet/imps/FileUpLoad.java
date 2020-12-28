@@ -1,12 +1,12 @@
 package server.servlet.imps;
 
 import bottle.util.Log4j;
+import bottle.util.StringUtil;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import server.servlet.beans.result.Result;
 import server.servlet.beans.result.UploadResult;
-import server.prop.WebServer;
 import server.servlet.beans.operation.FileUploadOperation;
 import server.servlet.iface.Mservlet;
 
@@ -27,14 +27,22 @@ import static server.servlet.beans.result.Result.RESULT_CODE.*;
 public class FileUpLoad extends Mservlet {
 
     //内存缓冲区
-    private final int CACHE_VAL = 4096;
+    private static int MEMORY_CACHE_BYTE_MAX = 1024;
 
     //设置单个文件的最大上传值
-    private final long SINGE_FILE_MAX_SIZE =  1024 * 1024 * 1024 * 10L;
+    private static long SINGE_FILE_MAX_SIZE =  1024 * 1024 * 1024 * 5L;
+
+    private static File TEMPORARY_FOLDER = new File("./temporaryFolder");
+
+    public static void setTemporaryFolder(int memByteMax,long singerFileMaxSize,File file) {
+        if ( memByteMax > 0) MEMORY_CACHE_BYTE_MAX = memByteMax;
+        if (singerFileMaxSize > 0) SINGE_FILE_MAX_SIZE = singerFileMaxSize;
+        if (file!=null) TEMPORARY_FOLDER = file;
+    }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-
+        resp.setHeader("Content-type", "text/html;charset=UTF-8");
         List<UploadResult> resultList = null;
 
         Result result = new Result();
@@ -50,9 +58,9 @@ public class FileUpLoad extends Mservlet {
             }
 
             DiskFileItemFactory diskFileItemFactory = new DiskFileItemFactory();
-            diskFileItemFactory.setRepository(WebServer.temporaryFolder);
+            diskFileItemFactory.setRepository(TEMPORARY_FOLDER);
             // 设定上传文件的值，如果上传文件大于缓冲区值，就可能在repository所代表的文件夹中产生临时文件，否则直接在内存中进行处理
-            diskFileItemFactory.setSizeThreshold(CACHE_VAL);
+            diskFileItemFactory.setSizeThreshold(MEMORY_CACHE_BYTE_MAX);
 
             // 创建一个ServletFileUpload对象
             ServletFileUpload uploader = new ServletFileUpload(diskFileItemFactory);
@@ -62,9 +70,9 @@ public class FileUpLoad extends Mservlet {
             List<FileItem> listItems = uploader.parseRequest(req);
             resultList = new FileUploadOperation(pathList,fileNameList,listItems).execute();
 
-            final List<UploadResult> _resultlist = resultList;
+            final List<UploadResult> _resultList = resultList;
 
-            subHook(req, _resultlist); //钩子
+            subHook(req, _resultList); //钩子
 
         } catch (Exception e) {
             Log4j.error("文件上传错误",e.fillInStackTrace());

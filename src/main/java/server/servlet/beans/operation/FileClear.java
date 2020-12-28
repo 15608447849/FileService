@@ -14,9 +14,8 @@ import java.util.*;
  * @Author: leeping
  * @Date: 2020/9/4 14:34
  */
-
 @PropertiesFilePath("/clear.properties")
-public class FileClearThread extends Thread{
+public class FileClear{
 
     @PropertiesName("file.clear.file.delete")
     private static boolean isEnableDelete = false;
@@ -33,36 +32,34 @@ public class FileClearThread extends Thread{
     @PropertiesName("file.clear.interval.time")
     private static int intervalTime = 24 * 60 * 60;
 
-    private FileClearThread(){
-        this.setDaemon(true);
-        this.setName("文件服务清理线程-"+getId());
-    }
-
-    @Override
-    public void run() {
-        while (true){
-            try {
-                ApplicationPropertiesBase.initStaticFields(FileClearThread.class);
-                if (intervalTime < 0 || segmentMaxTime < 0) break;
-                Set<String> suffixSet = new HashSet<>();
+    private static final Runnable RUNNABLE = new Runnable() {
+        @Override
+        public void run() {
+            while (true){
                 try {
-                    String[] suffixArr = fileSuffixArrayStr.split(",");
-                    suffixSet.addAll(Arrays.asList(suffixArr));
+                    ApplicationPropertiesBase.initStaticFields(FileClear.class);
+                    Thread.sleep(intervalTime * 1000L);
+                    if (intervalTime < 0 || segmentMaxTime < 0) break;
+                    Set<String> suffixSet = new HashSet<>();
+                    try {
+                        String[] suffixArr = fileSuffixArrayStr.split(",");
+                        suffixSet.addAll(Arrays.asList(suffixArr));
+                    } catch (Exception e) {
+                        Log4j.error("文件服务错误",e);
+                    }
+                    executeClear(segmentMaxTime * 1000L,suffixSet);
+
                 } catch (Exception e) {
                     Log4j.error("文件服务错误",e);
                 }
-                executeClear(segmentMaxTime * 1000L,suffixSet);
-                Thread.sleep(intervalTime * 1000L);
-            } catch (Exception e) {
-                Log4j.error("文件服务错误",e);
             }
         }
-    }
+    };
+
 
     private static void executeClear(long segmentMaxTime, Set<String> suffixSet) {
         //遍历文件
-
-        Log4j.info( WebServer.rootFolderStr + " ,启动文件清理, 最大存储时间: "+ TimeTool.formatDuring(segmentMaxTime)+" , 过滤后缀: "+ suffixSet);
+        Log4j.info( WebServer.rootFolderStr + " , 最大存储时间: "+ TimeTool.formatDuring(segmentMaxTime)+" , 过滤后缀: "+ suffixSet);
         new FileErgodicOperation(WebServer.rootFolderStr, true).setCallback(file -> {
             // 过滤'未超时',及后缀在'过滤后缀列表'内的文件
             String suffix = file.getName();
@@ -82,7 +79,7 @@ public class FileClearThread extends Thread{
 
 
         //移除空白目录
-        emptyDirectoryErgodic( WebServer.rootFolder , WebServer.temporaryFolder );//排除系统目录
+        emptyDirectoryErgodic( WebServer.rootFolder);//排除系统目录
     }
 
     private static void emptyDirectoryErgodic(File dict,File... filterDirs) {
@@ -110,12 +107,14 @@ public class FileClearThread extends Thread{
         }
     }
 
-    private static final class H{
-        private static final FileClearThread INSTANCE = new FileClearThread();
+    static {
+        Thread t = new Thread(RUNNABLE);
+        t.setDaemon(true);
+        t.setName("文件清理-"+t.getId());
+        t.start();
     }
 
-    public static FileClearThread get(){
-        return H.INSTANCE;
+    public static void start(){
+        Log4j.info("启动文件清理");
     }
-
 }

@@ -13,5 +13,6 @@ public class UploadResult {
     public String suffix; //文件后缀
     public String md5;//文件MD5值
     public String localAbsolutelyPath;//本地存储的绝对
+    public String relativePath;//文件服务的相对路径
     public long fileSize = 0L;// 文件大小
 }

@@ -40,6 +40,9 @@ public class HWOBSServer {
     @PropertiesName("bucket.name")
     public static String bucketName;
 
+    @PropertiesName("cdn.prev")
+    public static String cdnURL;
+
     private static final ObsClient obsClient_bucket;
     private static final ObsClient obsClient_info;
     private static final ObsClient obsClient_upload;
@@ -251,6 +254,7 @@ public class HWOBSServer {
 
         try {
             File file = new File(localPath);
+
             if (!file.exists() || file.length() > 5 * 1024 * 1024 * 1024L) {
                 return true;
             }
@@ -289,19 +293,22 @@ public class HWOBSServer {
 //                    + response.getObjectUrl()
 //            );
 
+            String md5 = null;
             try {
-                SetObjectMetadataRequest requestMeta = new SetObjectMetadataRequest(bucketName, remotePath);
-                requestMeta.getMetadata().put("md5", EncryptUtil.getFileMd5ByString(new File(localPath)));
-                ObjectMetadata metadata = obsClient_upload.setObjectMetadata(requestMeta);
-
+                md5 = EncryptUtil.getFileMd5ByString(new File(localPath));
             } catch (Exception e) {
-                if ( e instanceof ObsException){
-                    recodeException("上传文件("+remotePath+") 设置MD5失败 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误", (ObsException) e);
-                }else{
-                    e.printStackTrace();
-                }
+                System.err.println("无法产生MD5 , file: "+ localPath);
             }
 
+            try {
+                if (md5!=null){
+                    SetObjectMetadataRequest requestMeta = new SetObjectMetadataRequest(bucketName, remotePath);
+                    requestMeta.getMetadata().put("md5", md5 );
+                    ObjectMetadata metadata = obsClient_upload.setObjectMetadata(requestMeta);
+                }
+            } catch (ObsException e) {
+                recodeException("上传文件("+remotePath+") 设置MD5失败 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误", (ObsException) e);
+            }
             return true;
         }catch (ObsException e){
             recodeException("上传文件("+localPath+" -> "+remotePath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
@@ -329,9 +336,14 @@ public class HWOBSServer {
         return null;
     }
 
-    //获取文件共享路径
-    public static String convertLocalFileToObsUrl(String remotePath){
+    //获取文件
+    public static String convertLocalFileToOBSUrl(String remotePath){
         return String.format(MAIN_URL_RESOURCE_PREV,bucketName,areaEndpointPrev)+remotePath;
+    }
+
+    public static String convertLocalFileToCDNUrl(String remotePath){
+        if (cdnURL == null) return convertLocalFileToOBSUrl("");
+        return cdnURL+remotePath;
     }
 
     //文件下载

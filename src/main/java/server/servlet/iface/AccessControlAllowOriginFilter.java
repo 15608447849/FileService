@@ -29,7 +29,7 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
 
             req.setCharacterEncoding("UTF-8");
 
-            resp.setHeader("Content-type", "text/html;charset=UTF-8");
+
             resp.setCharacterEncoding("UTF-8");
 
             resp.addHeader("Access-Control-Allow-Origin", "*");

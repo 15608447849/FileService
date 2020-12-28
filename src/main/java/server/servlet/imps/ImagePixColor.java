@@ -57,6 +57,7 @@ public class ImagePixColor extends Mservlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.setHeader("Content-type", "text/html;charset=UTF-8");
         Result result = new Result();
         try {
             String json = req.getHeader("image-pix-color");

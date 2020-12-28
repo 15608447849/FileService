@@ -85,7 +85,7 @@ public class FileUploadOperation {
             File file = new File(localAbsolutelyFilePath);
 
             if (file.exists()) {
-                if (file.delete()){
+                if (!file.delete()){
                     uploadResult.error = "file("+localAbsolutelyFilePath+") exists and cannot be deleted";
                     return;
                 }
@@ -94,6 +94,7 @@ public class FileUploadOperation {
             fileItem.delete(); //删除临时文件
 
             uploadResult.localAbsolutelyPath = localAbsolutelyFilePath;
+            uploadResult.relativePath = localRelativePath;
             uploadResult.httpUrl = localAbsolutelyFilePath.replace(rootPath,WebServer.domain);
             uploadResult.currentFileName = specifyFileName;
             uploadResult.suffix = suffix;

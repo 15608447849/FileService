@@ -7,6 +7,7 @@ import bottle.properties.annotations.PropertiesName;
 import bottle.util.FileTool;
 import bottle.util.Log4j;
 import bottle.util.StringUtil;
+import com.sun.org.apache.bcel.internal.generic.NEW;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.resource.PathResourceManager;
@@ -14,20 +15,18 @@ import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.FilterInfo;
+import server.HuaWeiOBS.OBSUploadPoolUtil;
 import server.LunchServer;
+import server.servlet.beans.operation.FileClear;
+import server.servlet.beans.operation.ImageOperation;
 import server.servlet.iface.AccessControlAllowOriginFilter;
 import server.servlet.imps.*;
+import server.sqlites.SQLiteUtils;
 
 import javax.servlet.DispatcherType;
 import java.io.File;
 import java.io.IOException;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
 
 import static io.undertow.servlet.Servlets.servlet;
@@ -65,30 +64,51 @@ public class WebServer {
     //根目录文件夹
     public static File rootFolder;
     public static String rootFolderStr;
-    //临时目录文件夹
-    public static File temporaryFolder;
+
+
 
     static {
         ApplicationPropertiesBase.initStaticFields(WebServer.class);
-
-        rootFolder = new File(rootPath);
-        temporaryFolder = new File(rootPath + FileTool.SEPARATOR+"temporary");
-
-        if (!rootFolder.exists() ){
-            if (!rootFolder.mkdirs()) throw new IllegalStateException("启动失败,无效的主目录路径:"+rootFolder);
-        }
-        if (!temporaryFolder.exists() ){
-            if (!temporaryFolder.mkdirs()) throw new IllegalStateException("启动失败,无效的临时目录路径:"+temporaryFolder);
-        }
-
         try {
+            rootFolder = new File(rootPath);
             rootFolderStr = rootFolder.getCanonicalPath();
             Log4j.info("本地文件根目录: "+ rootFolderStr);
+
+            if (!rootFolder.exists() ){
+                if (!rootFolder.mkdirs()) throw new IllegalStateException("启动失败,无效的主目录路径:"+rootFolder);
+            }
+
+            File temporaryFolder = new File(rootFolder.getParent() ,rootFolder.getName()+"_temporary");
+            if (!temporaryFolder.exists() ){
+                if (!temporaryFolder.mkdirs()) throw new IllegalStateException("启动失败,无效的临时目录路径:"+temporaryFolder);
+            }
+
+            FileUpLoad.setTemporaryFolder(1024*10,1024 * 1024 * 1024 * 5L,temporaryFolder);
+
+            String dbStorePath = rootFolder.getParentFile().getCanonicalPath()
+                            + File.separator + rootFolder.getName()+"_local.db";
+
+            SQLiteUtils.initLoad(dbStorePath);
+
+            loadPlug();
+
         } catch (IOException e) {
-            throw new RuntimeException("获取根目录全路径异常");
+            throw new RuntimeException("文件服务初始化失败");
         }
     }
 
+    private static void loadPlug() {
+        //图片处理
+        ImageOperation.start();
+        //OBS同步
+        OBSUploadPoolUtil.start();
+//        //文件清理线程
+        FileClear.start();
+
+    }
+
+
+    public static long startTime;
     private static Undertow instance;
     public static void startWebServer() {
         try {
@@ -103,16 +123,14 @@ public class WebServer {
                     .setResourceManager(
                             new PathResourceManager(Paths.get(WebServer.rootPath), 16*4069L)
                     );
-
-            servletBuilder.addServlet(servlet("文件上传-图片处理", ImageHandle.class).addMapping("/upload"));
             servletBuilder.addServlet(servlet("服务器在线监测", Online.class).addMapping("/online"));
-            servletBuilder.addServlet(servlet("指定文件列表生成zip", GenerateZip.class).addMapping("/zip"));
-
+            servletBuilder.addServlet(servlet("文件上传", ImageHandle.class).addMapping("/upload"));
+            servletBuilder.addServlet(servlet("指定文件列表生成ZIP", GenerateZip.class).addMapping("/zip"));
             servletBuilder.addServlet(servlet("遍历文件列表", FileErgodic.class).addMapping("/ergodic"));
-            servletBuilder.addServlet(servlet("删除文件列表", FileDelete.class).addMapping("/delete"));
-            servletBuilder.addServlet(servlet("查询图片大小或对所有图片进行压缩", ImageSizeQuery.class).addMapping("/imageSize"));
-
+            servletBuilder.addServlet(servlet("删除文件", FileDelete.class).addMapping("/delete"));
             servletBuilder.addServlet(servlet("图片像素颜色", ImagePixColor.class).addMapping("/pixColor"));
+            servletBuilder.addServlet(servlet("文件内部命令", FileInsideOperation.class).addMapping("/operation"));
+            servletBuilder.addServlet(servlet("客户端日志记录", LogAppend.class).addMapping("/logAppend"));
 
             DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
 
@@ -132,7 +150,7 @@ public class WebServer {
 
             instance = builder.build();
             instance.start();
-
+            startTime = System.currentTimeMillis();
         } catch (Exception e) {
             Log4j.error("文件服务错误",e);
         }
