@@ -71,6 +71,9 @@ public class Mservlet extends javax.servlet.http.HttpServlet {
 
     //检测目录路径是否正确
     protected String checkDirPath(String path) {
+            if (path.startsWith("..")) path = path.replace("..","");
+            if (path.startsWith(".")) path = path.replace(".","");
+
             path = path.replace("\\\\", FileTool.SEPARATOR);
             if (!path.startsWith(FileTool.SEPARATOR)) path = FileTool.SEPARATOR + path;//保证前面有 '/'
             if (!path.endsWith(FileTool.SEPARATOR)) path += FileTool.SEPARATOR; //后面保证 '/'

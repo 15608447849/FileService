@@ -36,13 +36,13 @@ public class OBSUploadPoolUtil {
         try {
             File file = new File(localFilePath);
             if (file.exists()){
+                //过滤不上传的文件后缀
+                if (checkFileFilter(file.getName())) return true;
+
                 String md5 = EncryptUtil.getFileMd5ByString(file);
                 String remotePath = localFilePath.replace(WebServer.rootFolderStr,"");
                 //判断队列是否存在,判断OBS是否存在
-                boolean isExist = checkOBSFileExist(remotePath,md5,true);
-                if (isExist) {
-                    return true;
-                }
+                if (checkOBSFileExist(remotePath,md5,true)) return true;
 
                 boolean isAdd = addListValue(TYPE,localFilePath,md5,null);
                 if (isAdd){
@@ -99,7 +99,7 @@ public class OBSUploadPoolUtil {
     private static void multiUploadFileToOBS(List<StorageItem> list) {
         int size = list.size();
         int threadSize = size / limit;
-        List<List<StorageItem>> group = new ArrayList<>();
+        final List<List<StorageItem>> group = new ArrayList<>();
         for (int i = 0; i<threadSize; i++){
             group.add(list.subList(i*limit,i*limit+limit));
         }
@@ -108,13 +108,14 @@ public class OBSUploadPoolUtil {
             group.add(list.subList(threadSize*limit, size));
         }
         try{
+
             final CountDownLatch countDownLatch = new CountDownLatch(group.size());
 
             int index = 0;
             for (final List<StorageItem> _list : group) {
                 final int _index = index;
                 pool.post(() -> {
-                    uploadFileToOBS("("+size+")("+limit+")多线程上传("+_index+")",_list);
+                    uploadFileToOBS("多线程上传 "+group.size()+"-"+_index, _list);
                     countDownLatch.countDown();
                 });
                 index++;
@@ -143,20 +144,24 @@ public class OBSUploadPoolUtil {
                     Log4j.info("移除队列失败: " + it);
                 }
             }
-            /*
-            Log4j.info(flag + " ("+startTime+") 当前进度: "+ ((i+1)+"/"+list.size()) + ", OBS上传文件["+it.value+"]" +
-                    "\t检测存在: "+TimeTool.formatDuring(time_2 - time_1) +
-                    "\t上传文件: "+TimeTool.formatDuring(time_3 - time_2) +
-                    "\t移除队列: "+TimeTool.formatDuring(time_4 - time_3) +
-                    "\t总用时长: "+TimeTool.formatDuring(time_4 - time_1)
-                    */
         }
+
         long etime = System.currentTimeMillis();
 
-        Log4j.info(flag + " ("+startTime+") " +
+        Log4j.info(Thread.currentThread()+ " >> "+ flag +
+                " 开始时间: "+startTime+" " +
                 " 总用时长: " +TimeTool.formatDuring(System.currentTimeMillis() - stime) +
                 " 平均时长: "+TimeTool.formatDuring(( etime - stime)/list.size()));
 
+    }
+
+    private static boolean checkFileFilter(String fileName){
+        String suffix = fileName.substring(fileName.lastIndexOf(".") + 1);
+        final String[] filterArr = new String[]{"log","info","dev"};
+        for (String filterSuffix : filterArr){
+            if (suffix.equals(filterSuffix)) return true;
+        }
+        return false;
     }
 
     private static boolean checkOBSFileExist(String remotePath,String localFileMD5,boolean selectQueue) {

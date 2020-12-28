@@ -48,7 +48,7 @@ public class FileUpLoad extends Mservlet {
         Result result = new Result();
 
         //指定对应下标的文件保存路径
-        ArrayList<String> pathList = checkDirPathByList(filterData(req.getHeader("specify-path")));
+        ArrayList<String> pathList = checkDirPathByList( filterData(req.getHeader("specify-path")));
         //指定对应下标的文件保存文件名
         ArrayList<String> fileNameList = filterData( req.getHeader("specify-filename"));
 
@@ -75,7 +75,7 @@ public class FileUpLoad extends Mservlet {
             subHook(req, _resultList); //钩子
 
         } catch (Exception e) {
-            Log4j.error("文件上传错误",e.fillInStackTrace());
+            Log4j.error("文件上传错误",e);
             result.value(EXCEPTION);
         }finally {
           //向客户端返回结果

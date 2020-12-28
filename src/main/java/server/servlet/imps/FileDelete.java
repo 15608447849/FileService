@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
 
@@ -26,7 +27,9 @@ public class FileDelete extends Mservlet {
         //文件删除
         ArrayList<String> list = filterJsonData(req.getHeader("delete-list"));
         Log4j.info("删除文件:\n\t"+list);
+
         if (list!=null){
+            list.removeIf(val -> val == null || val.length() == 0 || val.equals("null"));
             list.forEach(path -> FileTool.deleteFileOrDir(  WebServer.rootFolderStr + path));
             HWOBSServer.deleteFile(list);
         }

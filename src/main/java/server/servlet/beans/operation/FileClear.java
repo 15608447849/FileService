@@ -71,7 +71,7 @@ public class FileClear{
                                 //+ " ["+suffix+"] "+suffixSet +" " +suffixSet.contains(suffix)
                                 + "删除结果: " + (  isEnableDelete ? file.delete() :" 禁止删除" );
 
-                        Log4j.writeLogToSpecFile("./clear",Log4j.sdfDict.format(new Date()),log);
+                        Log4j.writeLogToSpecFile("./logs/clear",Log4j.sdfDict.format(new Date()),log);
                     }
                 }
             return true;
@@ -97,7 +97,7 @@ public class FileClear{
                             " 最后修改时间: " + TimeTool.date_yMd_Hms_2Str(new Date(dict.lastModified()))
                     + "删除结果: " + (  isEnableDelete ? dict.delete() :" 禁止删除" );
 
-            Log4j.writeLogToSpecFile("./clear",Log4j.sdfDict.format(new Date()),log);
+            Log4j.writeLogToSpecFile("./logs/clear",Log4j.sdfDict.format(new Date()),log);
             return;
         }
 

@@ -214,6 +214,9 @@ public class HWOBSServer {
 
         for (String path: fileList){
             try{
+                if (path==null || path.length()==0) continue;
+
+                Log4j.info("尝试删除OBS文件: " + path);
                 if (path.startsWith("/")){
                     if (path.length()>1){
                         path = path.substring(1);
@@ -286,18 +289,16 @@ public class HWOBSServer {
             long time = System.currentTimeMillis();
             CompleteMultipartUploadResult response = obsClient_upload.uploadFile(request);
 
-//            Log4j.info(
-//                    "上传文件("+localPath+") 耗时:"
-//                    + TimeTool.formatDuring(System.currentTimeMillis() - time)
-//                            +"\n\t访问路径: "
-//                    + response.getObjectUrl()
-//            );
+            Log4j.info(
+                    "上传文件("+localPath+") 耗时:" + TimeTool.formatDuring(System.currentTimeMillis() - time)
+//                            +"\n\t访问路径: "+ response.getObjectUrl()
+            );
 
             String md5 = null;
             try {
                 md5 = EncryptUtil.getFileMd5ByString(new File(localPath));
             } catch (Exception e) {
-                System.err.println("无法产生MD5 , file: "+ localPath);
+                Log4j.info("无法产生MD5 , file: "+ localPath);
             }
 
             try {

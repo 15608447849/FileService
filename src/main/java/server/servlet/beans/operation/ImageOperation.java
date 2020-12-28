@@ -28,7 +28,7 @@ public class ImageOperation{
     public static void add(String imagePath, int[] maxImageLimit, boolean isCompress, long spSize, boolean isLogo, boolean minScaleExist, String tailorStr){
         String json = GoogleGsonUtil.javaBeanToJson(new ImageOperation(imagePath,maxImageLimit,isCompress,spSize,isLogo,minScaleExist,tailorStr));
         boolean isAdd = addListValue(TYPE,json,imagePath,null);
-        Log4j.info("添加文件处理: "+ imagePath + "  "+ isAdd);
+//        Log4j.info("添加文件处理: "+ imagePath + "  "+ isAdd);
         if (isAdd){
             synchronized (TYPE){
                 TYPE.notifyAll();

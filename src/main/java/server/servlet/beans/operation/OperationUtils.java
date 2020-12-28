@@ -44,7 +44,7 @@ public class OperationUtils {
     }
 
 
-    public static <T> T getIndexValue(List<String> dataList, int index, T def){
+    public static String getIndexValue(List<String> dataList, int index, String def){
         try {
             if (dataList!=null) {
                 String val = null;
@@ -52,14 +52,8 @@ public class OperationUtils {
                 if (dataList.size()>index) {
                     val = dataList.get(index);
                 }
-                if (!StringUtil.isEmpty(val)){
-                    if (def instanceof String){
-                        return (T) val;
-                    }
-                    Class cls = def.getClass();
-                    Method method = cls.getMethod("parse"+cls.getSimpleName(), String.class);
-                    return (T) method.invoke(null,val);
-                }
+
+                return val;
             }
         } catch (Exception e) {
             Log4j.error("文件服务错误",e);
