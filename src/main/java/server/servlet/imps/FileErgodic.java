@@ -24,9 +24,7 @@ public class FileErgodic extends Mservlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setHeader("Content-type", "text/html;charset=UTF-8");
         Result result = new Result();
-
         try {
-
             String path = req.getHeader("specify-path");
             String sub = req.getHeader("ergodic-sub");
             String filter = req.getHeader("filter-array");

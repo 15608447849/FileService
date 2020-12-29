@@ -52,7 +52,7 @@ public class FileUploadOperation {
             specifyFileName = getIndexValue(specifyNames,i,areaFileName);
 
             saveFile(fileItem,specifyPath,specifyFileName,uploadResult);
-            Log4j.info("表单域名 :"+areaName+" , 表单名 :"+areaFileName+" , 上传文件: " + specifyPath+specifyFileName);
+            Log4j.info(Thread.currentThread()+ "\t 表单域名 :"+areaName+" , 表单名 :"+areaFileName+" , 上传文件: " + specifyPath+specifyFileName);
             resultList.add(uploadResult);//添加结果集合
         }
         return resultList;

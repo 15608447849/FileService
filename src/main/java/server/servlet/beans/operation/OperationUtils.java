@@ -256,7 +256,6 @@ public class OperationUtils {
         return type.equals("jpeg") || type.equals("png");
     }
 
-
     //获取图片大小
     public static int[] getImageSize(File image){
         try {
@@ -279,7 +278,7 @@ public class OperationUtils {
         public int getValue() {
             return value;
         }
-    };
+    }
 
 
     private static float[] getPositionByHeight(int sw,int sh,int lw,int lh,int posType){

@@ -95,7 +95,7 @@ public class Mservlet extends javax.servlet.http.HttpServlet {
             out.flush();
             if (isClose) out.close();
         } catch (IOException e) {
-            Log4j.error("文件服务错误",e);
+            Log4j.error(Thread.currentThread()+ " 文件服务错误,返回结果失败",e);
         }
     }
 

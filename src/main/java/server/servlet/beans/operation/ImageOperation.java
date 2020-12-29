@@ -1,5 +1,6 @@
 package server.servlet.beans.operation;
 
+import bottle.threadpool.IOThreadPool;
 import bottle.util.FileTool;
 import bottle.util.GoogleGsonUtil;
 import bottle.util.Log4j;
@@ -10,8 +11,10 @@ import server.sqlites.SQLiteUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static server.servlet.beans.operation.OperationUtils.*;
 import static server.sqlites.SQLiteUtils.*;
@@ -25,18 +28,39 @@ public class ImageOperation{
 
     private static final String TYPE = "IMAGE_FILE_HANDLE_QUEUE";
 
+    private static final LinkedBlockingQueue<String[]> queue = new LinkedBlockingQueue<>();
+
     public static void add(String imagePath, int[] maxImageLimit, boolean isCompress, long spSize, boolean isLogo, boolean minScaleExist, String tailorStr){
         String json = GoogleGsonUtil.javaBeanToJson(new ImageOperation(imagePath,maxImageLimit,isCompress,spSize,isLogo,minScaleExist,tailorStr));
-        boolean isAdd = addListValue(TYPE,json,imagePath,null);
-//        Log4j.info("添加文件处理: "+ imagePath + "  "+ isAdd);
-        if (isAdd){
-            synchronized (TYPE){
-                TYPE.notifyAll();
-            }
+        String[] args = new String[]{json,imagePath};
+        try {
+            queue.put(args);
+        } catch (Exception e) {
+           Log4j.info("文件加入队列失败", Arrays.toString(args));
         }
     }
 
-    private static final Runnable RUNNABLE = () -> {
+    private static final Runnable RUNNABLE_WRITE_DB =() ->{
+        while (true){
+            try {
+                String[] args = queue.take();
+                String json = args[0];
+                String imagePath = args[1];
+
+                boolean isAdd = addListValue(TYPE,json,imagePath,null);
+                //        Log4j.info("添加文件处理: "+ imagePath + "  "+ isAdd);
+                if (isAdd){
+                    synchronized (TYPE){
+                        TYPE.notifyAll();
+                    }
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    };
+
+    private static final Runnable RUNNABLE_READ_DB = () -> {
         //循环读取队列中的任务
         while (true){
             try{
@@ -153,7 +177,6 @@ public class ImageOperation{
         if (isCompress) {
             String image_ing = filePathAndStrToSuffix(imagePath,"-ing");
             String image_org = filePathAndStrToSuffix(imagePath,"-org");
-
             long time = System.currentTimeMillis();
             File temp = new File(image_ing);// 压缩中的临时文件
             boolean isSuccess = imageCompress(image,temp,spSize);
@@ -167,7 +190,6 @@ public class ImageOperation{
                 FileTool.rename(temp,image) ; // 临时文件->当前文件
                 filePathAll.add(image_org);
             }
-
         }
     }
 
@@ -189,10 +211,15 @@ public class ImageOperation{
     }
 
     static {
-        Thread t = new Thread(RUNNABLE);
-        t.setDaemon(true);
-        t.setName("图片处理-"+t.getId());
-        t.start();
+        Thread t_write = new Thread(RUNNABLE_WRITE_DB);
+        t_write.setDaemon(true);
+        t_write.setName("图片处理-写入DB-"+t_write.getId());
+        t_write.start();
+
+        Thread t_read = new Thread(RUNNABLE_READ_DB);
+        t_read.setDaemon(true);
+        t_read.setName("图片处理-读取DB-"+t_read.getId());
+        t_read.start();
     }
 
     public static void start(){

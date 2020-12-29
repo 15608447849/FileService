@@ -31,11 +31,9 @@ public class FileInsideOperation extends Mservlet{
     public interface InsideOperationI{
         String execute(HttpServletRequest resp);
     }
-
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setHeader("Content-type", "text/html;charset=UTF-8");
-
         try {
             String cmd = req.getParameter("cmd");
             InsideOperationI exe = (InsideOperationI) Class.forName("server.servlet.imps."+cmd).newInstance();

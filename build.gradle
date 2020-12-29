@@ -32,9 +32,9 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
  
     //容器包
-    implementation 'io.undertow:undertow-core:2.0.1.Final'
-    implementation 'io.undertow:undertow-servlet:2.0.1.Final'
-    implementation 'io.undertow:undertow-websockets-jsr:2.0.1.Final'
+    implementation 'io.undertow:undertow-core:2.2.3.Final'
+    implementation 'io.undertow:undertow-servlet:2.2.3.Final'
+    implementation 'io.undertow:undertow-websockets-jsr:2.2.3.Final'
     //表单文件上传
     implementation 'commons-fileupload:commons-fileupload:1.4'
     //压缩

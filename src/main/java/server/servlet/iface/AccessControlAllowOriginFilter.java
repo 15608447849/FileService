@@ -1,6 +1,7 @@
 package server.servlet.iface;
 
 import bottle.util.Log4j;
+import io.undertow.servlet.spec.HttpServletRequestImpl;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
@@ -22,13 +23,31 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+        StringBuffer sb = new StringBuffer();
+
+        sb.append( request.getRemoteAddr()).append(":");
+        sb.append( request.getRemotePort()).append(" >> ");
+
+        if (request instanceof HttpServletRequestImpl){
+            HttpServletRequestImpl imp = (HttpServletRequestImpl) request;
+            sb.append(imp.getMethod() ).append(",");
+            sb.append(imp.getRequestURI() );
+        }else{
+            sb.append(request);
+        }
+
+
+        Log4j.info(Thread.currentThread()+ " 接入访问: " + sb);
+
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse resp = (HttpServletResponse) response;
+
+
+
 
         try {
 
             req.setCharacterEncoding("UTF-8");
-
 
             resp.setCharacterEncoding("UTF-8");
 
@@ -45,7 +64,7 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
 
             chain.doFilter(req, resp);
         } catch (UnsupportedEncodingException e) {
-            Log4j.error("文件服务错误",e);
+            Log4j.error(Thread.currentThread() +" 文件服务错误",e);
         }
     }
 

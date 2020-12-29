@@ -7,12 +7,16 @@ import bottle.properties.annotations.PropertiesName;
 import bottle.util.Log4j;
 import bottle.util.StringUtil;
 import io.undertow.Undertow;
+import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.resource.PathResourceManager;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.FilterInfo;
+import org.xnio.CompressionType;
+import org.xnio.Option;
+import org.xnio.Options;
 import server.HuaWeiOBS.OBSUploadPoolUtil;
 import server.LunchServer;
 import server.servlet.beans.operation.FileClear;
@@ -23,7 +27,7 @@ import server.sqlites.SQLiteUtils;
 
 import javax.servlet.DispatcherType;
 import java.io.File;
-import java.io.IOException;
+
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -63,6 +67,74 @@ public class WebServer {
     public static File rootFolder;
     public static String rootFolderStr;
 
+    public static long startTime;
+    private static Undertow instance;
+
+    private static void loadPlug() {
+        //图片处理
+        ImageOperation.start();
+        //OBS同步
+        OBSUploadPoolUtil.start();
+//        //文件清理线程
+        FileClear.start();
+    }
+
+    private static void loadUndertow() throws Exception{
+            if (instance==null){
+                //开启web文件服务器
+                DeploymentInfo servletBuilder = Servlets.deployment()
+                        .setClassLoader(LunchServer.class.getClassLoader())
+                        .setContextPath("/")
+                        .setDeploymentName("file_server.war")
+                        .addFilter(new FilterInfo("跨域过滤", AccessControlAllowOriginFilter.class))
+                        .addFilterUrlMapping("跨域过滤","/*", DispatcherType.REQUEST)
+                        .setResourceManager(
+                                new PathResourceManager(Paths.get(WebServer.rootPath), 16*4069L)
+                        );
+
+                servletBuilder.addServlet(servlet("服务器在线监测", Online.class).addMapping("/online"));
+                servletBuilder.addServlet(servlet("文件上传", ImageHandle.class).addMapping("/upload"));
+                servletBuilder.addServlet(servlet("指定文件列表生成ZIP", GenerateZip.class).addMapping("/zip"));
+                servletBuilder.addServlet(servlet("遍历文件列表", FileErgodic.class).addMapping("/ergodic"));
+                servletBuilder.addServlet(servlet("删除文件", FileDelete.class).addMapping("/delete"));
+                servletBuilder.addServlet(servlet("图片像素颜色", ImagePixColor.class).addMapping("/pixColor"));
+                servletBuilder.addServlet(servlet("文件内部命令", FileInsideOperation.class).addMapping("/operation"));
+                servletBuilder.addServlet(servlet("客户端日志记录", LogAppend.class).addMapping("/logAppend"));
+
+                DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
+
+                manager.deploy();
+                HttpHandler httpHandler = manager.start();
+
+                //获取本机所有IP信息
+                List<String> ipList = StringUtil.getLocalIPList();
+
+                if (ipList.isEmpty()) throw new RuntimeException("没有可用的IP地址");
+
+                Undertow.Builder builder = Undertow.builder();
+                for (String ip : ipList){
+                    builder.addHttpListener(WebServer.webPort,ip,httpHandler);
+                    Log4j.info("监听本地地址:  " + ip + " " + WebServer.webPort );
+                }
+
+                builder.setIoThreads(16);
+                builder.setWorkerThreads(256);
+                builder.setDirectBuffers(true);
+//                builder.setBufferSize(1024 * 1024 * 1024);
+//                builder.setBufferSize(64 * 1024 * 1024);
+                builder.setServerOption(UndertowOptions.IDLE_TIMEOUT,15*1000);
+                builder.setServerOption(UndertowOptions.REQUEST_PARSE_TIMEOUT,15*1000);
+                builder.setServerOption(UndertowOptions.NO_REQUEST_TIMEOUT,5*1000);
+                builder.setSocketOption(Options.READ_TIMEOUT,15*1000);
+                builder.setSocketOption(Options.WRITE_TIMEOUT,15*1000);
+                builder.setWorkerOption(Options.WORKER_TASK_CORE_THREADS,256);
+                builder.setWorkerOption(Options.WORKER_TASK_KEEPALIVE,30*1000);
+                builder.setWorkerOption(Options.COMPRESSION_TYPE , CompressionType.GZIP);
+                builder.setWorkerOption(Options.COMPRESSION_LEVEL ,9);
+
+                instance = builder.build();
+            }
+    }
 
 
     static {
@@ -89,68 +161,25 @@ public class WebServer {
             SQLiteUtils.initLoad(dbStorePath);
 
             loadPlug();
-
-        } catch (IOException e) {
+            loadUndertow();
+            Log4j.info("************************************ APPLICATION 初始化完成 ************************************");
+        } catch (Exception e) {
             throw new RuntimeException("文件服务初始化失败");
         }
     }
 
-    private static void loadPlug() {
-        //图片处理
-        ImageOperation.start();
-        //OBS同步
-        OBSUploadPoolUtil.start();
-//        //文件清理线程
-        FileClear.start();
 
-    }
-
-
-    public static long startTime;
-    private static Undertow instance;
     public static void startWebServer() {
-        try {
-            if (instance!=null) return;
-            //开启web文件服务器
-            DeploymentInfo servletBuilder = Servlets.deployment()
-                    .setClassLoader(LunchServer.class.getClassLoader())
-                    .setContextPath("/")
-                    .setDeploymentName("file_server.war")
-                    .addFilter(new FilterInfo("跨域过滤", AccessControlAllowOriginFilter.class))
-                    .addFilterUrlMapping("跨域过滤","/*", DispatcherType.REQUEST)
-                    .setResourceManager(
-                            new PathResourceManager(Paths.get(WebServer.rootPath), 16*4069L)
-                    );
-            servletBuilder.addServlet(servlet("服务器在线监测", Online.class).addMapping("/online"));
-            servletBuilder.addServlet(servlet("文件上传", ImageHandle.class).addMapping("/upload"));
-            servletBuilder.addServlet(servlet("指定文件列表生成ZIP", GenerateZip.class).addMapping("/zip"));
-            servletBuilder.addServlet(servlet("遍历文件列表", FileErgodic.class).addMapping("/ergodic"));
-            servletBuilder.addServlet(servlet("删除文件", FileDelete.class).addMapping("/delete"));
-            servletBuilder.addServlet(servlet("图片像素颜色", ImagePixColor.class).addMapping("/pixColor"));
-            servletBuilder.addServlet(servlet("文件内部命令", FileInsideOperation.class).addMapping("/operation"));
-            servletBuilder.addServlet(servlet("客户端日志记录", LogAppend.class).addMapping("/logAppend"));
-
-            DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
-
-            manager.deploy();
-            HttpHandler httpHandler = manager.start();
-
-            //获取本机所有IP信息
-            List<String> ipList = StringUtil.getLocalIPList();
-
-            if (ipList.isEmpty()) throw new RuntimeException("没有可用的IP地址");
-
-            Undertow.Builder builder = Undertow.builder();
-            for (String ip : ipList){
-                builder.addHttpListener(WebServer.webPort,ip,httpHandler);
-                Log4j.info("监听本地地址:  " + ip + " " + WebServer.webPort );
-            }
-
-            instance = builder.build();
+        if(instance != null){
             instance.start();
             startTime = System.currentTimeMillis();
-        } catch (Exception e) {
-            Log4j.error("文件服务错误",e);
+        }
+    }
+
+    public static void stopWebServer(){
+        if (instance != null){
+            instance.stop();
+            startTime = 0;
         }
     }
 

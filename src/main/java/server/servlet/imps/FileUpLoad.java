@@ -1,7 +1,7 @@
 package server.servlet.imps;
 
 import bottle.util.Log4j;
-import bottle.util.StringUtil;
+
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
@@ -34,33 +34,34 @@ public class FileUpLoad extends Mservlet {
 
     private static File TEMPORARY_FOLDER = new File("./temporaryFolder");
 
+    private static final DiskFileItemFactory diskFileItemFactory = new DiskFileItemFactory();
+
     public static void setTemporaryFolder(int memByteMax,long singerFileMaxSize,File file) {
         if ( memByteMax > 0) MEMORY_CACHE_BYTE_MAX = memByteMax;
         if (singerFileMaxSize > 0) SINGE_FILE_MAX_SIZE = singerFileMaxSize;
         if (file!=null) TEMPORARY_FOLDER = file;
+
+        diskFileItemFactory.setRepository(TEMPORARY_FOLDER);
+        // 设定上传文件的值，如果上传文件大于缓冲区值，就可能在repository所代表的文件夹中产生临时文件，否则直接在内存中进行处理
+        diskFileItemFactory.setSizeThreshold(MEMORY_CACHE_BYTE_MAX);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setHeader("Content-type", "text/html;charset=UTF-8");
-        List<UploadResult> resultList = null;
 
         Result result = new Result();
-
-        //指定对应下标的文件保存路径
-        ArrayList<String> pathList = checkDirPathByList( filterData(req.getHeader("specify-path")));
-        //指定对应下标的文件保存文件名
-        ArrayList<String> fileNameList = filterData( req.getHeader("specify-filename"));
-
+        List<UploadResult> resultList = null;
         try {
+
+            //指定对应下标的文件保存路径
+            ArrayList<String> pathList = checkDirPathByList( filterData(req.getHeader("specify-path")));
+            //指定对应下标的文件保存文件名
+            ArrayList<String> fileNameList = filterData( req.getHeader("specify-filename"));
+
             if (!ServletFileUpload.isMultipartContent(req)){
                 throw new IllegalArgumentException("content-type is not 'multipart/form-data'");
             }
-
-            DiskFileItemFactory diskFileItemFactory = new DiskFileItemFactory();
-            diskFileItemFactory.setRepository(TEMPORARY_FOLDER);
-            // 设定上传文件的值，如果上传文件大于缓冲区值，就可能在repository所代表的文件夹中产生临时文件，否则直接在内存中进行处理
-            diskFileItemFactory.setSizeThreshold(MEMORY_CACHE_BYTE_MAX);
 
             // 创建一个ServletFileUpload对象
             ServletFileUpload uploader = new ServletFileUpload(diskFileItemFactory);
@@ -75,15 +76,15 @@ public class FileUpLoad extends Mservlet {
             subHook(req, _resultList); //钩子
 
         } catch (Exception e) {
-            Log4j.error("文件上传错误",e);
+            Log4j.info(Thread.currentThread()+" 文件上传错误: "+ e.getMessage());
             result.value(EXCEPTION);
         }finally {
-          //向客户端返回结果
+            //向客户端返回结果
             if (resultList!=null){
                 result.value(SUCCESS);
                 result.data = resultList;
             }
-          writeJson(resp,result);
+            writeJson(resp,result);
         }
     }
 
