@@ -177,14 +177,15 @@ public class OBSUploadPoolUtil {
         return remoteFileMD5!=null && remoteFileMD5.equals(localFileMD5);
     }
 
-   static {
-       Thread t = new Thread(LOOP_QUEUE_RUNNABLE);
-       t.setDaemon(true);
-       t.setName("OBS上传-"+t.getId());
-       t.start();
-   }
+//   static {
+//
+//   }
 
     public static void start(){
+        Thread t = new Thread(LOOP_QUEUE_RUNNABLE);
+        t.setDaemon(true);
+        t.setName("OBS上传-"+t.getId());
+        t.start();
         Log4j.info("启动OBS文件上传");
     }
 

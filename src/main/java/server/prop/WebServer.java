@@ -4,6 +4,7 @@ package server.prop;
 import bottle.properties.abs.ApplicationPropertiesBase;
 import bottle.properties.annotations.PropertiesFilePath;
 import bottle.properties.annotations.PropertiesName;
+import bottle.util.FileTool;
 import bottle.util.Log4j;
 import bottle.util.StringUtil;
 import io.undertow.Undertow;
@@ -62,6 +63,8 @@ public class WebServer {
     public static float logoIconAlpha = 0.15f;
     @PropertiesName("image.logo.icon.rotate")
     public static int logoIconRotate = 0;
+    @PropertiesName("obs.enable.hw")
+    public static int hwObsIsOpen = 0;
 
     //根目录文件夹
     public static File rootFolder;
@@ -70,13 +73,18 @@ public class WebServer {
     public static long startTime;
     private static Undertow instance;
 
+    //临时文件目录
+    public static String GET_TEMP_FILE_DIR(){
+        return rootFolderStr + FileTool.SEPARATOR+ "temp" ;
+    }
+
     private static void loadPlug() {
         //图片处理
         ImageOperation.start();
-        //OBS同步
-        OBSUploadPoolUtil.start();
 //        //文件清理线程
         FileClear.start();
+        //OBS同步
+        if(hwObsIsOpen>0) OBSUploadPoolUtil.start();
     }
 
     private static void loadUndertow() throws Exception{

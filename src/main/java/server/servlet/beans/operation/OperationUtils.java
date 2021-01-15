@@ -7,6 +7,7 @@ import bottle.util.Log4j;
 import bottle.util.StringUtil;
 import net.coobird.thumbnailator.Thumbnails;
 
+import javax.imageio.IIOException;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
@@ -53,7 +54,7 @@ public class OperationUtils {
                     val = dataList.get(index);
                 }
 
-                return val;
+                if (val!=null) return val;
             }
         } catch (Exception e) {
             Log4j.error("文件服务错误",e);
@@ -308,7 +309,7 @@ public class OperationUtils {
     //添加文字水印
     @SuppressWarnings("unchecked")
     public static File markImageByText(String logoText, File image, int degree, Color color, float alpha, int place) {
-        OutputStream os = null;
+
         try {
             if (logoText == null || logoText.length() == 0) return image;
             // 1、源图片
@@ -353,17 +354,17 @@ public class OperationUtils {
             // 9、释放资源
             g.dispose();
             // 10、生成图片
-            os = new FileOutputStream(image);
-            ImageIO.write(buffImg, "jpeg", os);
-            return image.getAbsoluteFile();
+            String suf = image.getName().substring(image.getName().indexOf(".")+1);
+
+            try(OutputStream os = new FileOutputStream(image)){
+                ImageIO.write(buffImg, suf, os);
+                return image.getAbsoluteFile();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
         } catch (Exception e) {
             Log4j.error("文件服务错误",e);
-        } finally {
-            try {
-                if (null != os) os.close();
-            } catch (Exception e) {
-                Log4j.error("文件服务错误",e);
-            }
         }
         return image;
     }

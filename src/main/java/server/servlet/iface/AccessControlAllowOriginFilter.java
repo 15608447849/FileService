@@ -43,8 +43,6 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
         HttpServletResponse resp = (HttpServletResponse) response;
 
 
-
-
         try {
 
             req.setCharacterEncoding("UTF-8");

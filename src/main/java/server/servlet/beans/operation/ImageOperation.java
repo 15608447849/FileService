@@ -210,7 +210,9 @@ public class ImageOperation{
             }
     }
 
-    static {
+
+
+    public static void start(){
         Thread t_write = new Thread(RUNNABLE_WRITE_DB);
         t_write.setDaemon(true);
         t_write.setName("图片处理-写入DB-"+t_write.getId());
@@ -220,9 +222,6 @@ public class ImageOperation{
         t_read.setDaemon(true);
         t_read.setName("图片处理-读取DB-"+t_read.getId());
         t_read.start();
-    }
-
-    public static void start(){
         Log4j.info("启动图片处理");
     }
 

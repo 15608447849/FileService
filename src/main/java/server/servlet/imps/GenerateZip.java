@@ -12,12 +12,14 @@ import server.servlet.beans.result.Result;
 import server.prop.WebServer;
 import server.servlet.iface.Mservlet;
 
+import javax.net.ssl.HttpsURLConnection;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.*;
 
 import static server.servlet.beans.result.Result.RESULT_CODE.*;
@@ -29,31 +31,7 @@ import static server.servlet.beans.result.Result.RESULT_CODE.*;
  */
 public class GenerateZip extends Mservlet {
 
-    private static final String ZIP_BATCH_DIR =  FileTool.SEPARATOR  + "ZIP_TEMP" +  FileTool.SEPARATOR ;
-
-    private static final String ZIP_TEMP_DIR_PREV = "zip_batch_file_";
-
-    private static final long TIME_DEL = 1000L * 60 * 60 * 3; //3小时
-
-    private static final Timer timer = new Timer();
-
-    static {
-        // 注册定时器 - 10分钟后自动删除
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                File dict = new File(WebServer.rootFolder,ZIP_BATCH_DIR);
-                if (dict.exists()){
-                    File[] files = dict.listFiles();
-                    for (File f : files){
-                        if (System.currentTimeMillis() - f.lastModified() > TIME_DEL){
-                            f.delete();
-                        }
-                    }
-                }
-            }
-        },TIME_DEL);
-    }
+    private static final String ZIP_TEMP_DIR_PREV = "batchZIP_";
 
     private void addFile(List<File> list, File file) {
         if (file.isFile()){
@@ -68,15 +46,55 @@ public class GenerateZip extends Mservlet {
         }
     }
 
+
+    private File httpUrlToLocalFile(String urlStr){
+        //流转文件
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(urlStr);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(30*1000);
+            try(InputStream in = conn.getInputStream()){
+                //写入本地文件
+                String suffix = urlStr.substring(urlStr.lastIndexOf("."));
+
+                File tempFile = new File(WebServer.GET_TEMP_FILE_DIR(),ZIP_TEMP_DIR_PREV +System.currentTimeMillis()+suffix);
+                try(OutputStream out=new FileOutputStream(tempFile)){
+                    byte[] buf = new byte[1024];
+                    int len;
+                    while((len=in.read(buf))>0){
+                        out.write(buf,0,len);
+                    }
+                    return tempFile;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }finally {
+            if(conn!=null){
+                conn.disconnect();
+            }
+        }
+        return null;
+    }
+
     private List<File> checkPaths(List<String> paths) {
+
        List<File> list = new ArrayList<>();
        for (String path : paths){
-           if (!path.startsWith(FileTool.SEPARATOR)) path = FileTool.SEPARATOR + path;// 保证前面有 '/'
-           File file = new File(WebServer.rootFolder,  path);
-           if (!file.exists()){
+           File file;
+           if(path.startsWith("http") || path.startsWith("https")){
+               file =  httpUrlToLocalFile(path);
+           }else{
+               if (!path.startsWith(FileTool.SEPARATOR)) path = FileTool.SEPARATOR + path;// 保证前面有 '/'
+               file = new File(WebServer.rootFolder,  path);
+           }
+
+           if (file==null || !file.exists()){
                //文件不存在
                continue;
            }
+
           addFile(list,file);
        }
        return list;
@@ -91,7 +109,7 @@ public class GenerateZip extends Mservlet {
      */
     private File cpFileListToDir(List<String> paths) throws  Exception{
 
-        String dirPath = WebServer.rootFolderStr+ZIP_BATCH_DIR+EncryptUtil.encryption(ZIP_TEMP_DIR_PREV + System.currentTimeMillis());
+        String dirPath = WebServer.GET_TEMP_FILE_DIR()+EncryptUtil.encryption(ZIP_TEMP_DIR_PREV + System.currentTimeMillis());
 
         List<File> fileList = checkPaths(paths);
 
@@ -115,7 +133,7 @@ public class GenerateZip extends Mservlet {
      * @return 压缩包相对路径
      */
     private String compressZip(File dir) throws Exception{
-            File zipFile = new File(WebServer.rootFolder , ZIP_BATCH_DIR + dir.getName() +".zip");
+            File zipFile = new File(WebServer.GET_TEMP_FILE_DIR() ,  dir.getName() +".zip");
             if (zipFile.exists()) if (!zipFile.delete()) throw new IllegalStateException("无法删除文件: "+ zipFile);
 
             Project prj = new Project();
@@ -139,7 +157,7 @@ public class GenerateZip extends Mservlet {
         Log4j.info("ZIP-文件列表: "+ pathList);
         try {
             if(pathList.size() == 0) {
-                throw new FileNotFoundException("没有指定需要打包的文件列表");
+                throw new FileNotFoundException("没有指定需要打包的资源列表");
             }
             File dirt = cpFileListToDir(pathList);
             if (!dirt.exists()){

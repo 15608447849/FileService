@@ -24,12 +24,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import static server.servlet.beans.operation.RuntimeUtils.*;
 
-// 任意客户端日志记录功能
+// 任意日志记录生成文件
 public class LogAppend extends Mservlet {
 
     private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd");
 
-    private static LinkedBlockingQueue<String[]> queue = new LinkedBlockingQueue<>();
+    private static final LinkedBlockingQueue<String[]> queue = new LinkedBlockingQueue<>();
 
     private static Thread thread = new Thread(() -> {
         while (true){

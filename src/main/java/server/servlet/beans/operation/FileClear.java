@@ -44,8 +44,8 @@ public class FileClear{
                     try {
                         String[] suffixArr = fileSuffixArrayStr.split(",");
                         suffixSet.addAll(Arrays.asList(suffixArr));
-                    } catch (Exception e) {
-                        Log4j.error("文件服务错误",e);
+                    } catch (Exception ignored) {
+                        //pass
                     }
                     executeClear(segmentMaxTime * 1000L,suffixSet);
 
@@ -59,16 +59,17 @@ public class FileClear{
 
     private static void executeClear(long segmentMaxTime, Set<String> suffixSet) {
         //遍历文件
-        Log4j.info( WebServer.rootFolderStr + " , 最大存储时间: "+ TimeTool.formatDuring(segmentMaxTime)+" , 过滤后缀: "+ suffixSet);
+        Log4j.info( WebServer.rootFolderStr + " , 最大存储时间: "+ TimeTool.formatDuring(segmentMaxTime)+ " , 过滤后缀: "+ suffixSet);
         new FileErgodicOperation(WebServer.rootFolderStr, true).setCallback(file -> {
-            // 过滤'未超时',及后缀在'过滤后缀列表'内的文件
-            String suffix = file.getName();
-            suffix = suffix.substring(suffix.lastIndexOf(".") + 1);
                 if (System.currentTimeMillis() - file.lastModified() > segmentMaxTime) {
+                    //文件超过过期时间
+                    String fileName = file.getName();
+                    String suffix = fileName.substring(fileName.lastIndexOf(".") + 1);
+
                     if (!suffixSet.contains(suffix)){
-                        String log = "过期文件: " + file +
-                                " 最后修改时间: " + TimeTool.date_yMd_Hms_2Str(new Date(file.lastModified()))
-                                //+ " ["+suffix+"] "+suffixSet +" " +suffixSet.contains(suffix)
+                        // 后缀允许被删除
+                        String log = "过期文件: " + file
+                                + " 最后修改时间: " + TimeTool.date_yMd_Hms_2Str(new Date(file.lastModified()))
                                 + "删除结果: " + (  isEnableDelete ? file.delete() :" 禁止删除" );
 
                         Log4j.writeLogToSpecFile("./logs/clear",Log4j.sdfDict.format(new Date()),log);
@@ -77,9 +78,8 @@ public class FileClear{
             return true;
         }).start();
 
-
         //移除空白目录
-        emptyDirectoryErgodic( WebServer.rootFolder);//排除系统目录
+        emptyDirectoryErgodic( WebServer.rootFolder );
     }
 
     private static void emptyDirectoryErgodic(File dict,File... filterDirs) {
@@ -92,6 +92,7 @@ public class FileClear{
                     return;
                 }
             }
+
             // 删除
             String log = "空文件夹: " + dict +
                             " 最后修改时间: " + TimeTool.date_yMd_Hms_2Str(new Date(dict.lastModified()))
@@ -107,14 +108,48 @@ public class FileClear{
         }
     }
 
-    static {
-        Thread t = new Thread(RUNNABLE);
-        t.setDaemon(true);
-        t.setName("文件清理-"+t.getId());
-        t.start();
-    }
+
+    private static final long TEMP_FILE_TIMEOUT =   15 * 60 * 1000L; //15分钟
+
+    private static final Runnable RUNNABLE_TEMP = new Runnable() {
+        @Override
+        public void run() {
+            while (true){
+                try{
+                    Thread.sleep(TEMP_FILE_TIMEOUT);
+
+                    new FileErgodicOperation(WebServer.GET_TEMP_FILE_DIR(), true).setCallback(file -> {
+                        if (System.currentTimeMillis() - file.lastModified() > TEMP_FILE_TIMEOUT) {
+                            //临时文件过期
+                            String log = "过期文件: " + file +
+                                            " 最后修改时间: " + TimeTool.date_yMd_Hms_2Str(new Date(file.lastModified()))
+                                            + "删除结果: " +  file.delete();
+
+                            Log4j.writeLogToSpecFile("./logs/clear",Log4j.sdfDict.format(new Date()),log);
+                        }
+                        return true;
+                    }).start();
+
+                }catch (Exception e){
+                    Log4j.error("文件服务错误",e);
+                }
+            }
+        }
+    };
+
+
+
 
     public static void start(){
+        Thread t_global = new Thread(RUNNABLE);
+        t_global.setDaemon(true);
+        t_global.setName("文件清理-"+t_global.getId());
+        t_global.start();
+
+        Thread t_temp = new Thread(RUNNABLE_TEMP);
+        t_temp.setDaemon(true);
+        t_temp.setName("临时文件清理-"+t_temp.getId());
+        t_temp.start();
         Log4j.info("启动文件清理");
     }
 }

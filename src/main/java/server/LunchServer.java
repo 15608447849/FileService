@@ -18,19 +18,19 @@ public class LunchServer {
     public static int currentRestartCount = 0;
     public static void main(String[] args) throws Exception {
         //开启web文件服务器
-//        WebServer.startWebServer();
+        WebServer.startWebServer();
 
-        while (true){
-            WebServer.startWebServer();
-            synchronized (LunchServer.class){
-                LunchServer.class.wait(TimeTool.PERIOD_DAY);
-            }
-            Thread.sleep(2000);
-            WebServer.stopWebServer();
-            Thread.sleep(2000);
-            System.gc();
-            currentRestartCount++;
-        }
+//        while (true){
+//            WebServer.startWebServer();
+//            synchronized (LunchServer.class){
+//                LunchServer.class.wait(TimeTool.PERIOD_DAY);
+//            }
+//            Thread.sleep(2000);
+//            WebServer.stopWebServer();
+//            Thread.sleep(2000);
+//            System.gc();
+//            currentRestartCount++;
+//        }
 
     }
 }
