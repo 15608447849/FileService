@@ -4,6 +4,7 @@ package server.servlet.imps;
 import bottle.util.EncryptUtil;
 import bottle.util.FileTool;
 import bottle.util.Log4j;
+import bottle.util.TimeTool;
 import org.apache.commons.io.FileUtils;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Zip;
@@ -20,6 +21,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static server.servlet.beans.result.Result.RESULT_CODE.*;
@@ -31,7 +33,11 @@ import static server.servlet.beans.result.Result.RESULT_CODE.*;
  */
 public class GenerateZip extends Mservlet {
 
-    private static final String ZIP_TEMP_DIR_PREV = "batchZIP_";
+    private static final String ZIP_TEMP_DIR_PREV = "zip_";
+    private static final String ZIP_URL_FLAG= "_network_";
+
+    private static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+
 
     private void addFile(List<File> list, File file) {
         if (file.isFile()){
@@ -58,7 +64,7 @@ public class GenerateZip extends Mservlet {
                 //写入本地文件
                 String suffix = urlStr.substring(urlStr.lastIndexOf("."));
 
-                File tempFile = new File(WebServer.GET_TEMP_FILE_DIR(),ZIP_TEMP_DIR_PREV +System.currentTimeMillis()+suffix);
+                File tempFile = new File(WebServer.GET_TEMP_FILE_DIR(),ZIP_TEMP_DIR_PREV + ZIP_URL_FLAG + simpleDateFormat.format(new Date()) + suffix);
                 try(OutputStream out=new FileOutputStream(tempFile)){
                     byte[] buf = new byte[1024];
                     int len;
@@ -109,19 +115,28 @@ public class GenerateZip extends Mservlet {
      */
     private File cpFileListToDir(List<String> paths) throws  Exception{
 
-        String dirPath = WebServer.GET_TEMP_FILE_DIR()+EncryptUtil.encryption(ZIP_TEMP_DIR_PREV + System.currentTimeMillis());
+        String dirPath = WebServer.GET_TEMP_FILE_DIR() + FileTool.SEPARATOR + ZIP_TEMP_DIR_PREV + simpleDateFormat.format(new Date());
 
         List<File> fileList = checkPaths(paths);
 
         File dir = new File(dirPath);
+
         if (fileList.size() > 0){
             if (!dir.exists()) if (!dir.mkdirs()) throw new IllegalArgumentException("无法创建目录: "+ dirPath);//创建目录
 
             for (File file : fileList) {
-                File out = new File(dirPath,
-                        EncryptUtil.encryption(file.getAbsolutePath())+"_"+file.getName()+ file.getName().substring(file.getName().lastIndexOf("."))
-                );
-                FileUtils.copyFile(file, out); //复制文件
+
+                //目标临时存放位置
+                File out = new File(dirPath, EncryptUtil.encryption(file.getAbsolutePath())+"_"+file.getName());
+
+                //复制文件
+                FileUtils.copyFile(file, out);
+
+                //删除网络下载资源
+                if (file.getName().startsWith(ZIP_TEMP_DIR_PREV + ZIP_URL_FLAG)){
+                    file.delete();
+                }
+
             }
         }
         return dir;
@@ -134,6 +149,7 @@ public class GenerateZip extends Mservlet {
      */
     private String compressZip(File dir) throws Exception{
             File zipFile = new File(WebServer.GET_TEMP_FILE_DIR() ,  dir.getName() +".zip");
+
             if (zipFile.exists()) if (!zipFile.delete()) throw new IllegalStateException("无法删除文件: "+ zipFile);
 
             Project prj = new Project();
@@ -145,7 +161,8 @@ public class GenerateZip extends Mservlet {
             fileSet.setDir(dir);
             zip.addFileset(fileSet);
             zip.execute();
-            FileTool.deleteFileOrDir(dir.getCanonicalPath());
+
+            //返回压缩包路径
             return zipFile.getCanonicalPath();
     }
 
@@ -159,16 +176,20 @@ public class GenerateZip extends Mservlet {
             if(pathList.size() == 0) {
                 throw new FileNotFoundException("没有指定需要打包的资源列表");
             }
-            File dirt = cpFileListToDir(pathList);
-            if (!dirt.exists()){
+            File compressDirt = cpFileListToDir(pathList);
+
+            if (!compressDirt.exists()){
                 throw new FileNotFoundException("没有存在一个可批量打包的文件");
             }
 
-            String zipLocalPath  = compressZip(dirt);
+            String zipLocalPath  = compressZip(compressDirt);
+
+            //完成 删除目录
+            boolean isDelete  = compressDirt.delete();
+            Log4j.info("已生成ZIP文件: " + zipLocalPath +" ,删除打包目标目录: "+ compressDirt + (isDelete?" 成功":" 失败"));
+
             //返回ZIP包URL
-            String url = zipLocalPath.replace(WebServer.rootFolderStr,WebServer.domain);
-            Log4j.info("ZIP URL : " + url);
-            result.data = url;
+            result.data = zipLocalPath.replace(WebServer.rootFolderStr,WebServer.domain);
             result.value(SUCCESS);
         } catch (Exception e) {
             result.data = e.getMessage();

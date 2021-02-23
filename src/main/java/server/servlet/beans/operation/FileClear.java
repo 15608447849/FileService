@@ -32,21 +32,32 @@ public class FileClear{
     @PropertiesName("file.clear.interval.time")
     private static int intervalTime = 24 * 60 * 60;
 
+    private static final Set<String> suffixSet = new HashSet<>();
+
+    @PropertiesName("file.clear.temp.exist.time")
+    private static int temp_file_timeout =   3 * 60; //3分钟
+
+    static {
+        ApplicationPropertiesBase.initStaticFields(FileClear.class);
+
+        try {
+            String[] suffixArr = fileSuffixArrayStr.split(",");
+            suffixSet.addAll(Arrays.asList(suffixArr));
+        } catch (Exception ignored) {
+            //pass
+        }
+    }
+
     private static final Runnable RUNNABLE = new Runnable() {
         @Override
         public void run() {
             while (true){
                 try {
-                    ApplicationPropertiesBase.initStaticFields(FileClear.class);
+
                     Thread.sleep(intervalTime * 1000L);
+
                     if (intervalTime < 0 || segmentMaxTime < 0) break;
-                    Set<String> suffixSet = new HashSet<>();
-                    try {
-                        String[] suffixArr = fileSuffixArrayStr.split(",");
-                        suffixSet.addAll(Arrays.asList(suffixArr));
-                    } catch (Exception ignored) {
-                        //pass
-                    }
+
                     executeClear(segmentMaxTime * 1000L,suffixSet);
 
                 } catch (Exception e) {
@@ -109,19 +120,16 @@ public class FileClear{
     }
 
 
-    private static final long TEMP_FILE_TIMEOUT =   15 * 60 * 1000L; //15分钟
-
     private static final Runnable RUNNABLE_TEMP = new Runnable() {
         @Override
         public void run() {
             while (true){
                 try{
-                    Thread.sleep(TEMP_FILE_TIMEOUT);
-
+                    Log4j.info("开始清理临时文件..."+ temp_file_timeout);
                     new FileErgodicOperation(WebServer.GET_TEMP_FILE_DIR(), true).setCallback(file -> {
-                        if (System.currentTimeMillis() - file.lastModified() > TEMP_FILE_TIMEOUT) {
+                        if (System.currentTimeMillis() - file.lastModified() > (temp_file_timeout * 1000L)) {
                             //临时文件过期
-                            String log = "过期文件: " + file +
+                            String log = "(临时)过期文件: " + file +
                                             " 最后修改时间: " + TimeTool.date_yMd_Hms_2Str(new Date(file.lastModified()))
                                             + "删除结果: " +  file.delete();
 
@@ -130,6 +138,7 @@ public class FileClear{
                         return true;
                     }).start();
 
+                    Thread.sleep((temp_file_timeout * 1000L));
                 }catch (Exception e){
                     Log4j.error("文件服务错误",e);
                 }

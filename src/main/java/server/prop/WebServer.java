@@ -21,6 +21,7 @@ import org.xnio.Options;
 import server.HuaWeiOBS.OBSUploadPoolUtil;
 import server.LunchServer;
 import server.servlet.beans.operation.FileClear;
+import server.servlet.beans.operation.FileUploadOperation;
 import server.servlet.beans.operation.ImageOperation;
 import server.servlet.iface.AccessControlAllowOriginFilter;
 import server.servlet.imps.*;
@@ -30,6 +31,7 @@ import javax.servlet.DispatcherType;
 import java.io.File;
 
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 
 import static io.undertow.servlet.Servlets.servlet;
@@ -65,6 +67,12 @@ public class WebServer {
     public static int logoIconRotate = 0;
     @PropertiesName("obs.enable.hw")
     public static int hwObsIsOpen = 0;
+
+
+    @PropertiesName("upload.suffix.black.list")
+    public static String upload_suffix_black_list;
+    @PropertiesName("upload.suffix.white.list")
+    public static String upload_suffix_white_list;
 
     //根目录文件夹
     public static File rootFolder;

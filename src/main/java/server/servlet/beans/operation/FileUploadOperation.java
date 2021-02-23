@@ -1,5 +1,8 @@
 package server.servlet.beans.operation;
 ;
+import bottle.properties.abs.ApplicationPropertiesBase;
+import bottle.properties.annotations.PropertiesFilePath;
+import bottle.properties.annotations.PropertiesName;
 import bottle.util.EncryptUtil;
 import bottle.util.FileTool;
 import bottle.util.Log4j;
@@ -9,6 +12,7 @@ import server.servlet.beans.result.UploadResult;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -17,14 +21,30 @@ import static server.servlet.beans.operation.OperationUtils.getIndexValue;
 /**
  * Created by user on 2017/12/14.
  */
+
+
 public class FileUploadOperation {
 
-    private static final String[] REFUSE_UPLOAD_SUFFIX_ARRAY = {
-            "exe","bat","cmd","sh","dll",
-            "xml","ink","htm","html","js","css","jmx",
-            "tar","war","rm",
-            "avi","mdf","3gp",
-            "bak","tmp"};
+    private static String[] REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST;
+    private static String[] REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST;
+
+    static {
+        try {
+            REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST = WebServer.upload_suffix_white_list.split(",");
+        } catch (Exception e) {
+            REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST = null;
+        }
+
+        try {
+            REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST = WebServer.upload_suffix_black_list.split(",");
+        } catch (Exception e) {
+            REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST = null;
+        }
+
+        Log4j.info("文件后缀白名单:\t"+Arrays.toString(REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST));
+        Log4j.info("文件后缀黑名单:\t"+Arrays.toString(REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST));
+
+    }
 
     private final ArrayList<String> specifyPaths; //指定的文件保存相对路径
     private final ArrayList<String> specifyNames;//指定的文件名
@@ -91,12 +111,32 @@ public class FileUploadOperation {
                 suffix = specifyFileName.substring(specifyFileName.lastIndexOf(".")+1); //不包含 '.'
             }
 
-            //判断后缀是否允许保存
-            for (String str : REFUSE_UPLOAD_SUFFIX_ARRAY){
-                if (suffix.equals(str)){
-                    throw new IllegalArgumentException("非法的文件后缀( "+suffix+" )");
+            boolean suffixEnable = true;
+
+            if (REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST!=null && REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST.length>0){
+                //判断后缀是否允许保存 - 白名单
+                suffixEnable = false;
+                for (String str : REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST){
+                    if (suffix.toLowerCase().equals(str)){
+                        suffixEnable = true;
+                        break;
+                    }
+                }
+            }else if (REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST!=null && REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST.length>0){
+                //判断后缀是否允许保存 - 黑名单
+                suffixEnable = true;
+                for (String str : REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST){
+                    if (suffix.toLowerCase().equals(str)){
+                        suffixEnable = false;
+                        break;
+                    }
                 }
             }
+
+            if(!suffixEnable){
+                throw new IllegalArgumentException("非法的文件后缀( "+suffix+" )");
+            }
+
 
             //创建指定目录
             if (!FileTool.checkDir(localAbsolutelyDictPath)){
