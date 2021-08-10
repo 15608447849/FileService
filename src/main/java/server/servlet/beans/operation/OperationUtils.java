@@ -120,8 +120,8 @@ public class OperationUtils {
                     .outputQuality(1.0f)
                     .toOutputStream(fos);
             return true;
-        }catch (IOException e){
-            Log4j.error("文件服务错误",e);
+        }catch (Exception e){
+            Log4j.error("文件服务错误 imageResizeByGoogle 失败, image = "+image ,e);
         }
         return false;
     }
@@ -133,10 +133,11 @@ public class OperationUtils {
                     .outputQuality(0.1f)
                     .toOutputStream(fos);
             return true;
-        } catch (IOException e) {
-            Log4j.error("文件服务错误",e);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log4j.error("文件服务错误 imageCompress_scale_min 失败, image = "+image ,e);
         }
-        return false;
+       return false;
     }
 
 
@@ -167,21 +168,25 @@ public class OperationUtils {
 //            Log4j.info(compress + " 压缩后大小: "+ fileSizeFormat(compress.length()) );
             return compress.length() > 0;
         } catch (Exception e) {
-            Log4j.error("文件服务错误",e);
+            Log4j.error("文件服务错误 imageCompress 失败, image = "+image,e);
         }
         return false;
     }
 
     public static void main(String[] args) {
-        File file = new File("C:\\Users\\user\\Desktop\\1.jpg");
-        long srcLen = file.length();
+//        File file = new File("C:\\Users\\user\\Desktop\\1.jpg");
+//        long srcLen = file.length();
+//
+//        File f = new File("C:\\Users\\user\\Desktop\\11.jpg");
+//        FFMPRG_CMD.imageCompress_(file,f);//使用ffmpeg
+//
+////       File f = imageCompress(file,1024*1024); //使用
+//        long  distLen = f.length();
+//       System.out.println("减小大小: " + (srcLen - distLen));
 
-        File f = new File("C:\\Users\\user\\Desktop\\11.jpg");
-        FFMPRG_CMD.imageCompress_(file,f);//使用ffmpeg
-
-//       File f = imageCompress(file,1024*1024); //使用
-        long  distLen = f.length();
-       System.out.println("减小大小: " + (srcLen - distLen));
+        File file = new File("C:\\Users\\Administrator\\Desktop\\0.jpg");
+        File file2 = new File("C:\\Users\\Administrator\\Desktop\\01.jpg");
+        imageCompress_scale_min(file,file2);
     }
 
     private static File imageCompress(final File image,long spSize,int executeCount){
@@ -263,7 +268,7 @@ public class OperationUtils {
             // 1、源图片
             BufferedImage srcImg = ImageIO.read(image);
             return new int[]{srcImg.getWidth(), srcImg.getHeight()};
-        } catch (IOException e) {
+        } catch (Exception e) {
             Log4j.error("文件服务错误",e);
         }
         return new int[]{-1,-1};

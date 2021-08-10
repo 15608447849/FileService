@@ -27,6 +27,7 @@ import java.text.DecimalFormat;
 import java.util.*;
 
 import static server.servlet.beans.operation.RuntimeUtils.*;
+import static server.servlet.iface.AccessControlAllowOriginFilter.lastAccessRequestMap;
 
 // 回复当前文件服务器的信息/状态
 public class Online extends Mservlet {
@@ -35,7 +36,7 @@ public class Online extends Mservlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setHeader("Content-type", "text/html;charset=UTF-8");
 
-        Log4j.info( Thread.currentThread() + " 查看系统状态" );
+//        Log4j.info( Thread.currentThread() + " 查看系统状态" );
 
         String params = req.getParameter("state");
         if (params==null){
@@ -61,7 +62,15 @@ public class Online extends Mservlet {
                     LunchServer.class.notifyAll();
                     writeString(resp, "服务2秒后将重启",true);
                 }
-            }else{
+            }
+            if (params.equals("lastRequest")){
+                StringBuilder s = new StringBuilder();
+                for (Thread thread : lastAccessRequestMap.keySet()){
+                    s.append("<br/>").append(thread).append(" >> ").append(lastAccessRequestMap.get(thread));
+                }
+                writeString(resp, s.toString(),true);
+            }
+            else{
                 ThreadMXBean tmx = ManagementFactory.getThreadMXBean();
                 DecimalFormat percent = new DecimalFormat("0.00%");
                 String str =
@@ -83,8 +92,7 @@ public class Online extends Mservlet {
                                 "<br/>\t" + "JVM 线程 总数" + "\t" + tmx.getThreadCount() +
                                 "<br/>\t" + "JVM 线程 活跃数" + "\t" + Thread.activeCount() +
 
-                                "<br/>\t" + "运行时长 " + "\t" + TimeTool.formatDuring((System.currentTimeMillis() - WebServer.startTime)) +
-                                "<br/>\t" + "重启次数 " + "\t" + LunchServer.currentRestartCount;
+                                "<br/>\t" + "运行时长 " + "\t" + TimeTool.formatDuring((System.currentTimeMillis() - WebServer.startTime));
 
 
                 writeString(resp, str,true);

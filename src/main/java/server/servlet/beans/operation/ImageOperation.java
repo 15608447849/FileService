@@ -124,6 +124,10 @@ public class ImageOperation{
     private boolean execute(){
         try {
             image = new File(imagePath);
+            if (!image.exists()) {
+                Log4j.info("文件不存在 "+image);
+                return true;
+            }
             filePathAll.add(imagePath);
             // 检查是否是图片
             if (isImageSuffix(image)) {
@@ -141,7 +145,7 @@ public class ImageOperation{
            OBSUploadPoolUtil.addFileToQueue(filePathAll);
            return true;
         } catch (Exception e) {
-            Log4j.error("文件服务错误",e);
+            Log4j.error("文件服务错误 处理图片: "+image,e);
         }
         return false;
     }

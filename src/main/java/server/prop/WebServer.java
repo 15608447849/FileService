@@ -1,12 +1,10 @@
 package server.prop;
 
-
 import bottle.properties.abs.ApplicationPropertiesBase;
 import bottle.properties.annotations.PropertiesFilePath;
 import bottle.properties.annotations.PropertiesName;
 import bottle.util.FileTool;
 import bottle.util.Log4j;
-import bottle.util.StringUtil;
 import io.undertow.Undertow;
 import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
@@ -16,29 +14,27 @@ import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.FilterInfo;
 import org.xnio.CompressionType;
-import org.xnio.Option;
 import org.xnio.Options;
 import server.HuaWeiOBS.OBSUploadPoolUtil;
 import server.LunchServer;
 import server.servlet.beans.operation.FileClear;
-import server.servlet.beans.operation.FileUploadOperation;
 import server.servlet.beans.operation.ImageOperation;
 import server.servlet.iface.AccessControlAllowOriginFilter;
 import server.servlet.imps.*;
 import server.sqlites.SQLiteUtils;
-
 import javax.servlet.DispatcherType;
 import java.io.File;
-
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 import static io.undertow.servlet.Servlets.servlet;
 
 @PropertiesFilePath("/web.properties")
 public class WebServer {
 
+    private static String webHost = "0.0.0.0";
     @PropertiesName("web.port")
     private static int webPort = 80;
     @PropertiesName("web.file.directory")
@@ -68,6 +64,8 @@ public class WebServer {
     @PropertiesName("obs.enable.hw")
     public static int hwObsIsOpen = 0;
 
+    @PropertiesName("app.print.lv")
+    public static int printLv = 1 | 2 | 4 | 8 | 16 ;
 
     @PropertiesName("upload.suffix.black.list")
     public static String upload_suffix_black_list;
@@ -95,6 +93,7 @@ public class WebServer {
         if(hwObsIsOpen>0) OBSUploadPoolUtil.start();
     }
 
+
     private static void loadUndertow() throws Exception{
             if (instance==null){
                 //开启web文件服务器
@@ -111,40 +110,41 @@ public class WebServer {
                 servletBuilder.addServlet(servlet("服务器在线监测", Online.class).addMapping("/online"));
                 servletBuilder.addServlet(servlet("文件上传", ImageHandle.class).addMapping("/upload"));
                 servletBuilder.addServlet(servlet("指定文件列表生成ZIP", GenerateZip.class).addMapping("/zip"));
+                servletBuilder.addServlet(servlet("指定文件列表下载ZIP数据流", DownloadZipStream.class).addMapping("/downloadZip"));
                 servletBuilder.addServlet(servlet("遍历文件列表", FileErgodic.class).addMapping("/ergodic"));
                 servletBuilder.addServlet(servlet("删除文件", FileDelete.class).addMapping("/delete"));
                 servletBuilder.addServlet(servlet("图片像素颜色", ImagePixColor.class).addMapping("/pixColor"));
                 servletBuilder.addServlet(servlet("文件内部命令", FileInsideOperation.class).addMapping("/operation"));
                 servletBuilder.addServlet(servlet("客户端日志记录", LogAppend.class).addMapping("/logAppend"));
+                servletBuilder.addServlet(servlet("XDOC OFFICE 转换", XOfficeServlet.class).addMapping("/xoffice"));
 
                 DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
 
                 manager.deploy();
+
                 HttpHandler httpHandler = manager.start();
 
-                //获取本机所有IP信息
-                List<String> ipList = StringUtil.getLocalIPList();
-
-                if (ipList.isEmpty()) throw new RuntimeException("没有可用的IP地址");
-
                 Undertow.Builder builder = Undertow.builder();
-                for (String ip : ipList){
-                    builder.addHttpListener(WebServer.webPort,ip,httpHandler);
-                    Log4j.info("监听本地地址:  " + ip + " " + WebServer.webPort );
-                }
+
+                builder.addHttpListener(WebServer.webPort,webHost,httpHandler);
 
                 builder.setIoThreads(16);
                 builder.setWorkerThreads(256);
-                builder.setDirectBuffers(true);
+
+//                builder.setDirectBuffers(true);
 //                builder.setBufferSize(1024 * 1024 * 1024);
-//                builder.setBufferSize(64 * 1024 * 1024);
-                builder.setServerOption(UndertowOptions.IDLE_TIMEOUT,15*1000);
-                builder.setServerOption(UndertowOptions.REQUEST_PARSE_TIMEOUT,15*1000);
-                builder.setServerOption(UndertowOptions.NO_REQUEST_TIMEOUT,5*1000);
-                builder.setSocketOption(Options.READ_TIMEOUT,15*1000);
-                builder.setSocketOption(Options.WRITE_TIMEOUT,15*1000);
+
+//                builder.setServerOption(UndertowOptions.IDLE_TIMEOUT,60*60*1000);
+
+                builder.setServerOption(UndertowOptions.REQUEST_PARSE_TIMEOUT,60 * 60 * 1000);
+                builder.setServerOption(UndertowOptions.NO_REQUEST_TIMEOUT, 60 * 1000);
+
+                builder.setSocketOption(Options.READ_TIMEOUT,6 * 60 * 1000);
+                builder.setSocketOption(Options.WRITE_TIMEOUT,6 * 60 * 1000);
+
                 builder.setWorkerOption(Options.WORKER_TASK_CORE_THREADS,256);
-                builder.setWorkerOption(Options.WORKER_TASK_KEEPALIVE,30*1000);
+                builder.setWorkerOption(Options.WORKER_TASK_KEEPALIVE,60 * 1000);
+
                 builder.setWorkerOption(Options.COMPRESSION_TYPE , CompressionType.GZIP);
                 builder.setWorkerOption(Options.COMPRESSION_LEVEL ,9);
 
@@ -189,6 +189,7 @@ public class WebServer {
         if(instance != null){
             instance.start();
             startTime = System.currentTimeMillis();
+            Log4j.info("监听本地地址:  " + webHost + " " + webPort );
         }
     }
 

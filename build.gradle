@@ -41,6 +41,8 @@ dependencies {
     implementation 'org.apache.ant:ant:1.10.5'
     //google 图片处理
     implementation 'net.coobird:thumbnailator:0.4.8'
+    implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.4.1'
+  
     //本地数据存储
     implementation 'org.xerial:sqlite-jdbc:3.28.0'
     
@@ -58,6 +60,7 @@ shadowJar {
     manifest {
         attributes 'Main-Class': 'server.LunchServer'
     }
+    exclude 'dll'
     exclude 'ffmpeg'
     exclude 'ffmpeg.exe'
     exclude 'simhei.ttf'

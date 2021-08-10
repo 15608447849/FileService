@@ -72,6 +72,7 @@ public class FileUpLoad extends Mservlet {
             resultList = new FileUploadOperation(pathList,fileNameList,listItems).execute();
 
             final List<UploadResult> _resultList = resultList;
+            if (_resultList.size() == 0) throw new IllegalAccessException("表单文件解析错误");
 
             subHook(req, _resultList); //钩子
 

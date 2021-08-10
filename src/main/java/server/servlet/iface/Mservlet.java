@@ -6,11 +6,6 @@ import bottle.util.StringUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
-import server.prop.WebServer;
-
-
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;

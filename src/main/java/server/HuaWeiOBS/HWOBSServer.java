@@ -9,9 +9,11 @@ import bottle.util.TimeTool;
 import com.obs.services.ObsClient;
 import com.obs.services.exception.ObsException;
 import com.obs.services.model.*;
+import server.prop.WebServer;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.*;
 
 /**
@@ -252,6 +254,32 @@ public class HWOBSServer {
         }
     }
 
+    private static String getNetFileSizeDescription(long size) {
+        StringBuffer bytes = new StringBuffer();
+        DecimalFormat format = new DecimalFormat("###.0");
+        if (size >= 1024 * 1024 * 1024) {
+            double i = (size / (1024.0 * 1024.0 * 1024.0));
+            bytes.append(format.format(i)).append("GB");
+        }
+        else if (size >= 1024 * 1024) {
+            double i = (size / (1024.0 * 1024.0));
+            bytes.append(format.format(i)).append("MB");
+        }
+        else if (size >= 1024) {
+            double i = (size / (1024.0));
+            bytes.append(format.format(i)).append("KB");
+        }
+        else if (size < 1024) {
+            if (size <= 0) {
+                bytes.append("0B");
+            }
+            else {
+                bytes.append((int) size).append("B");
+            }
+        }
+        return bytes.toString();
+    }
+
     //文件上传
     static boolean uploadLocalFile(String localPath, String remotePath){
 
@@ -268,45 +296,47 @@ public class HWOBSServer {
                 }
             }
 
-            UploadFileRequest  request = new UploadFileRequest(bucketName, remotePath);
-            request.setAcl(AccessControlList.REST_CANNED_PUBLIC_READ);
-            request.setUploadFile(localPath);
-
-            request.setTaskNum(5);
-            request.setPartSize( file.length() / 10);
-            request.setEnableCheckpoint(true);
-
-
-            request.setProgressInterval(10 * 1024 * 1024L);
-            request.setProgressListener(status -> {
-                // 获取上传平均速率
-//                System.out.println("上传平均速率 :" + status.getAverageSpeed());
-                // 获取上传进度百分比
-//                System.out.println(localPath+ " 上传进度百分比:" + status.getTransferPercentage());
-            });
-
-
-            long time = System.currentTimeMillis();
-            CompleteMultipartUploadResult response = obsClient_upload.uploadFile(request);
-
-            Log4j.info(
-                    "上传文件("+localPath+") 耗时:" + TimeTool.formatDuring(System.currentTimeMillis() - time)
-//                            +"\n\t访问路径: "+ response.getObjectUrl()
-            );
-
-            String md5 = null;
+            String md5;
             try {
                 md5 = EncryptUtil.getFileMd5ByString(new File(localPath));
             } catch (Exception e) {
                 Log4j.info("无法产生MD5 , file: "+ localPath);
+                return false;
+            }
+
+            UploadFileRequest  request = new UploadFileRequest(bucketName, remotePath);
+            request.setAcl(AccessControlList.REST_CANNED_PUBLIC_READ);
+            request.setUploadFile(localPath);
+
+            request.setTaskNum(8);
+            request.setPartSize( file.length() / 8);
+            request.setEnableCheckpoint(true);
+
+            request.setProgressInterval(10 * 1024 * 1024L);
+
+            if ((WebServer.printLv & 2) > 0){
+                request.setProgressListener(status -> {
+
+                    Log4j.info("[OBS]上传文件("+localPath+")"
+                            + " ,上传进度百分比:" + status.getTransferPercentage()
+                            + " ,上传平均速率 :" + getNetFileSizeDescription((long)(Math.ceil(status.getAverageSpeed()))));
+                });
+            }
+
+            long time = System.currentTimeMillis();
+            CompleteMultipartUploadResult response = obsClient_upload.uploadFile(request);
+
+            if ((WebServer.printLv & 2) > 0){
+                Log4j.info(
+                        "[OBS]上传文件("+localPath+") 耗时:" + TimeTool.formatDuring(System.currentTimeMillis() - time)
+                            +"\n\t访问路径: "+ response.getObjectUrl()
+                );
             }
 
             try {
-                if (md5!=null){
-                    SetObjectMetadataRequest requestMeta = new SetObjectMetadataRequest(bucketName, remotePath);
-                    requestMeta.getMetadata().put("md5", md5 );
-                    ObjectMetadata metadata = obsClient_upload.setObjectMetadata(requestMeta);
-                }
+                SetObjectMetadataRequest requestMeta = new SetObjectMetadataRequest(bucketName, remotePath);
+                requestMeta.getMetadata().put("md5", md5 );
+                ObjectMetadata metadata = obsClient_upload.setObjectMetadata(requestMeta);
             } catch (ObsException e) {
                 recodeException("上传文件("+remotePath+") 设置MD5失败 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误", (ObsException) e);
             }
@@ -316,6 +346,7 @@ public class HWOBSServer {
         }
         return false;
     }
+
 
     //存在返回MD5
     static String getObsFileMD5(String remotePath){

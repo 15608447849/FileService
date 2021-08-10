@@ -31,19 +31,19 @@ public class FileUploadOperation {
     static {
         try {
             REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST = WebServer.upload_suffix_white_list.split(",");
+            Log4j.info("文件后缀白名单:\t"+Arrays.toString(REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST));
+
         } catch (Exception e) {
             REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST = null;
         }
 
         try {
             REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST = WebServer.upload_suffix_black_list.split(",");
+            Log4j.info("文件后缀黑名单:\t"+Arrays.toString(REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST));
+
         } catch (Exception e) {
             REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST = null;
         }
-
-        Log4j.info("文件后缀白名单:\t"+Arrays.toString(REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST));
-        Log4j.info("文件后缀黑名单:\t"+Arrays.toString(REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST));
-
     }
 
     private final ArrayList<String> specifyPaths; //指定的文件保存相对路径
@@ -79,13 +79,16 @@ public class FileUploadOperation {
             //保存文件
             UploadResult uploadResult = saveFile(fileItem,specifyPath,specifyFileName);
             //打印情况
-            Log4j.info(Thread.currentThread()
-                    +"\t域名: "+areaName + ",contentType: "+ contentType+",数据大小: "+ size+",缓存位置: "+ (isMemStorage?"内存":"磁盘")
-                    +", 实际文件名: "+areaFileName
-                    +", 执行路径: " + specifyPath
-                    +", 指定文件名: " + specifyFileName
-                    +", 保存结果: "+ uploadResult.success
-            );
+            if ((WebServer.printLv & 16) > 0){
+                Log4j.info(Thread.currentThread()
+                        +" 域名: "+areaName + ",contentType: "+ contentType+",数据大小: "+ size+",缓存位置: "+ (isMemStorage?"内存":"磁盘")
+                        +", 实际文件名: "+areaFileName
+                        +", 执行路径: " + specifyPath
+                        +", 指定文件名: " + specifyFileName
+                        +", 保存结果: "+ uploadResult.success
+                );
+            }
+
             //添加结果集合
             resultList.add(uploadResult);
         }

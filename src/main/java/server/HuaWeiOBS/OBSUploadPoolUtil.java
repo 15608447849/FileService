@@ -4,6 +4,7 @@ import bottle.threadpool.IOThreadPool;
 import bottle.util.EncryptUtil;
 import bottle.util.Log4j;
 import bottle.util.TimeTool;
+import com.obs.services.IFSClient;
 import server.prop.WebServer;
 import server.sqlites.SQLiteUtils;
 
@@ -127,22 +128,54 @@ public class OBSUploadPoolUtil {
         }
     }
 
+    /*
+    * True OBS已存在或上传成功
+    * False OBS不存在
+    * */
+    private static boolean uploadFileToOBSExecute(String fileLocalPath,String localFileMD5 ){
+        boolean flag = false;
+        String remotePath = fileLocalPath.replace(WebServer.rootFolderStr, "");
+        if (localFileMD5!=null){
+            flag = checkOBSFileExist(remotePath, localFileMD5, false);
+        }
+        if (!flag){
+            flag = HWOBSServer.uploadLocalFile(fileLocalPath, remotePath);
+        }
+        return flag;
+    }
+
+    public static boolean uploadTempFileToOBSExecute(String fileLocalPath){
+        if (WebServer.hwObsIsOpen > 0){
+            String md5;
+            try {
+                md5 =EncryptUtil.getFileMd5ByString(new File(fileLocalPath));
+            } catch (Exception e) {
+                md5 = null;
+            }
+            return uploadFileToOBSExecute(fileLocalPath,md5);
+        }
+        return false;
+    }
+
+
     private static void uploadFileToOBS(String flag,List<SQLiteUtils.StorageItem> list) {
         String startTime = TimeTool.date_yMd_Hms_2Str(new Date());
         long stime = System.currentTimeMillis();
         for (StorageItem it : list) {
-            String remotePath = it.value.replace(WebServer.rootFolderStr, "");
-            boolean isExist = checkOBSFileExist(remotePath, it.identity, false);
 
-            boolean removeQueue = isExist;
-            if (!isExist) {
-                removeQueue = HWOBSServer.uploadLocalFile(it.value, remotePath);
-            }
+            boolean removeQueue = uploadFileToOBSExecute(it.value,it.identity);
+
+//            String remotePath = it.value.replace(WebServer.rootFolderStr, "");
+//            boolean isExist = checkOBSFileExist(remotePath, it.identity, false);
+//
+//            boolean removeQueue = isExist;
+//            if (!isExist) {
+//                removeQueue = HWOBSServer.uploadLocalFile(it.value, remotePath);
+//            }
+
             if (removeQueue) {
                 boolean isDelRes = removeListValue(TYPE, it.value, it.identity);
-                if (!isDelRes) {
-                    Log4j.info("移除队列失败: " + it);
-                }
+                if (!isDelRes)  Log4j.info("移除队列失败: " + it);
             }
         }
 
@@ -176,10 +209,6 @@ public class OBSUploadPoolUtil {
         String remoteFileMD5 = HWOBSServer.getObsFileMD5(remotePath);
         return remoteFileMD5!=null && remoteFileMD5.equals(localFileMD5);
     }
-
-//   static {
-//
-//   }
 
     public static void start(){
         Thread t = new Thread(LOOP_QUEUE_RUNNABLE);
