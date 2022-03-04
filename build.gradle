@@ -58,7 +58,8 @@ shadowJar {
     classifier = null
     version = 1.0
     manifest {
-        attributes 'Main-Class': 'server.LunchServer'
+//        attributes 'Main-Class': 'server.LunchServer'
+        attributes 'Main-Class': 'server.SmsUtil'
     }
     exclude 'dll'
     exclude 'ffmpeg'
