@@ -2,15 +2,13 @@ package server.servlet.imps;
 
 
 
-import server.prop.WebServer;
-import server.servlet.beans.operation.ImageOperation;
-import server.servlet.beans.result.UploadResult;
+import server.servlet.beans.ImageOperation;
+import server.servlet.beans.UploadFileItemResult;
+import server.undertow.ServletAnnotation;
+
 import javax.servlet.http.HttpServletRequest;
-import java.io.File;
 
 import java.util.List;
-
-import static server.servlet.beans.operation.OperationUtils.*;
 
 
 /**
@@ -18,11 +16,12 @@ import static server.servlet.beans.operation.OperationUtils.*;
  * @Date: 2019/4/1 13:48
  * 图片处理
  */
+@ServletAnnotation(name = "文件上传",path = "/upload")
 public class ImageHandle extends FileUpLoad{
     // 对应表单下标 tab1;tab2;tab3 ...
     // tailor-list =  width x height ; 1080x1920,5400x8630 ; 2540x1330,770x240 ; 44x44 ;
     @Override
-    protected void subHook(HttpServletRequest req, List<UploadResult> resultList) {
+    protected void subHook(HttpServletRequest req, List<UploadFileItemResult> resultList) {
         super.subHook(req, resultList);
 
         List<String> tailorList = filterData(req.getHeader("tailor-list")); //裁剪信息
@@ -48,7 +47,7 @@ public class ImageHandle extends FileUpLoad{
         }
 
         for (int i = 0; i < resultList.size() ; i++){
-            UploadResult it = resultList.get(i);
+            UploadFileItemResult it = resultList.get(i);
             if (!it.success)  continue;
             String tailorStr = null;
             //裁剪处理值

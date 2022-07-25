@@ -4,31 +4,23 @@ package server.servlet.imps;
 import bottle.util.FileTool;
 import bottle.util.StringUtil;
 import bottle.util.TimeTool;
-import server.HuaWeiOBS.HWOBSServer;
-import server.prop.WebServer;
-import server.servlet.beans.operation.SysUtils;
-import server.servlet.iface.Mservlet;
+import server.undertow.ServletAnnotation;
+import server.undertow.WebServer;
+import server.undertow.CustomServlet;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
-import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import static server.servlet.beans.operation.RuntimeUtils.*;
-
 // 任意日志记录生成文件
-public class LogAppend extends Mservlet {
 
+@ServletAnnotation(name = "日志记录",path = "/logAppend")
+public class LogAppend extends CustomServlet {
     private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd");
-
     private static final LinkedBlockingQueue<String[]> queue = new LinkedBlockingQueue<>();
 
     private static Thread thread = new Thread(() -> {
@@ -46,12 +38,10 @@ public class LogAppend extends Mservlet {
         thread.start();
     }
 
-
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         doPost(req,resp);
     }
-
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -69,9 +59,7 @@ public class LogAppend extends Mservlet {
         String clientType = arr[0];
         String logName = arr[1];
         String content = arr[2];
-        FileTool.writeStringToFile(
-                TimeTool.date_yMd_Hms_2Str(new Date()) +"\t" +content+"\n",
-                WebServer.rootFolderStr + "/ClientLogs/"+clientType+"/"+simpleDateFormat.format(new Date()),
-                logName, true);
+        FileTool.writeStringToFile(TimeTool.date_yMd_Hms_2Str(new Date()) +"\t" +content+"\n",
+                WebServer.rootFolderStr + "/recodeLogs/"+clientType+"/"+simpleDateFormat.format(new Date()), logName, true);
     }
 }

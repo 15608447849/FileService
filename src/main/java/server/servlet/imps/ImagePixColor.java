@@ -3,8 +3,9 @@ package server.servlet.imps;
 
 import bottle.util.GoogleGsonUtil;
 import bottle.util.Log4j;
-import server.servlet.beans.result.Result;
-import server.servlet.iface.Mservlet;
+import server.undertow.ServletAnnotation;
+import server.undertow.ServletResult;
+import server.undertow.CustomServlet;
 
 import javax.imageio.ImageIO;
 import javax.servlet.ServletException;
@@ -14,14 +15,15 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
-import java.util.Arrays;
 
 /**
  * @Author: leeping
  * @Date: 2019/8/8 11:10
  * 获取图片指定点的像素颜色
  */
-public class ImagePixColor extends Mservlet {
+
+@ServletAnnotation(name = "图片像素颜色",path = "/pixColor")
+public class ImagePixColor extends CustomServlet {
 
     private static class Param{
         String image;
@@ -58,7 +60,7 @@ public class ImagePixColor extends Mservlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setHeader("Content-type", "text/html;charset=UTF-8");
-        Result result = new Result();
+        ServletResult result = new ServletResult();
         try {
             String json = req.getHeader("image-pix-color");
             if (json != null){
@@ -66,7 +68,7 @@ public class ImagePixColor extends Mservlet {
                 if (param!=null){
                     BufferedImage image = ImageIO.read(new URL(param.image));
                     int [] rgb = getRGB(image,param.x,param.y);
-                    result.value(Result.RESULT_CODE.SUCCESS,rgb);
+                    result.setData(rgb);
                 }
             }
         } catch (IOException e) {

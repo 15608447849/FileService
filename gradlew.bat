@@ -6,7 +6,7 @@
 @rem ##########################################################################
 
 @rem Set local scope for the variables with windows NT shell
-if "%server.OS%"=="Windows_NT" setlocal
+if "%server.xdoc.OS%"=="Windows_NT" setlocal
 
 set DIRNAME=%~dp0
 if "%DIRNAME%" == "" set DIRNAME=.
@@ -48,7 +48,7 @@ goto fail
 :init
 @rem Get command-line arguments, handling Windows variants
 
-if not "%server.OS%" == "Windows_NT" goto win9xME_args
+if not "%server.xdoc.OS%" == "Windows_NT" goto win9xME_args
 
 :win9xME_args
 @rem Slurp the command line arguments.
@@ -79,6 +79,6 @@ if  not "" == "%GRADLE_EXIT_CONSOLE%" exit 1
 exit /b 1
 
 :mainEnd
-if "%server.OS%"=="Windows_NT" endlocal
+if "%server.xdoc.OS%"=="Windows_NT" endlocal
 
 :omega

@@ -24,7 +24,7 @@ class SQLiteConnect{
 
     private static final ArrayList<SQLiteConnect> mConnectPools = new ArrayList<>();
 
-    static final private Runnable LOOP_OUT_TIME_CONNECTION_RUNABLE = new Runnable() {
+    static final private Runnable LOOP_OUT_TIME_CONNECTION = new Runnable() {
         @Override
         public void run() {
             while (true){
@@ -74,7 +74,7 @@ class SQLiteConnect{
             connect = new SQLiteConnect();
             mConnectPools.add(connect);
             local.set(connect);
-//            Log4j.info(Thread.currentThread()+" 创建数据库连接, 当前总连接数: " + mConnectPools.size());
+            Log4j.info(" 创建数据库连接, 当前总连接数: " + mConnectPools.size());
         }
         connect.state = USED;
         return connect;
@@ -139,7 +139,7 @@ class SQLiteConnect{
     }
 
     static {
-        Thread t = new Thread(LOOP_OUT_TIME_CONNECTION_RUNABLE);
+        Thread t = new Thread(LOOP_OUT_TIME_CONNECTION);
         t.setDaemon(true);
         t.start();
     }

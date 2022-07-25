@@ -2,25 +2,27 @@ package server.servlet.imps;
 
 import bottle.util.FileTool;
 import bottle.util.Log4j;
-import server.HuaWeiOBS.HWOBSServer;
-import server.prop.WebServer;
-import server.servlet.beans.result.Result;
-import server.servlet.iface.Mservlet;
+import server.hwobs.HWOBSServer;
+import server.undertow.ServletAnnotation;
+import server.undertow.WebServer;
+import server.undertow.ServletResult;
+import server.undertow.CustomServlet;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 
-import static server.servlet.beans.result.Result.RESULT_CODE.SUCCESS;
+import static server.undertow.ServletResult.RESULT_CODE.SUCCESS;
 
 /**
  * @Author: leeping
  * @Date: 2019/4/1 17:25
  */
-public class FileDelete extends Mservlet {
+
+@ServletAnnotation(name = "删除文件",path = "/delete")
+public class FileDelete extends CustomServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setHeader("Content-type", "text/html;charset=UTF-8");
@@ -33,6 +35,6 @@ public class FileDelete extends Mservlet {
             list.forEach(path -> FileTool.deleteFileOrDir(  WebServer.rootFolderStr + path));
             HWOBSServer.deleteFile(list);
         }
-        writeJson(resp,new Result().value(SUCCESS));
+        writeJson(resp,new ServletResult().value(SUCCESS));
     }
 }

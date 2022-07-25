@@ -3,16 +3,12 @@ package server.servlet.imps;
 
 import bottle.util.*;
 
-
-import io.undertow.servlet.Servlets;
-import io.undertow.servlet.api.ServletInfo;
-import server.HuaWeiOBS.HWOBSServer;
-import server.HuaWeiOBS.OBSUploadPoolUtil;
+import server.hwobs.HWOBSServer;
 import server.LunchServer;
-import server.prop.WebServer;
-import server.servlet.beans.operation.FileErgodicOperation;
-import server.servlet.beans.operation.SysUtils;
-import server.servlet.iface.Mservlet;
+import server.undertow.ServletAnnotation;
+import server.undertow.WebServer;
+import server.comm.SysUtil;
+import server.undertow.CustomServlet;
 
 
 import javax.servlet.ServletException;
@@ -22,15 +18,17 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
-import java.nio.charset.StandardCharsets;
+
 import java.text.DecimalFormat;
 import java.util.*;
 
-import static server.servlet.beans.operation.RuntimeUtils.*;
-import static server.servlet.iface.AccessControlAllowOriginFilter.lastAccessRequestMap;
+import static server.comm.RuntimeUtil.*;
+import static server.undertow.AccessControlAllowOriginFilter.lastAccessRequestMap;
 
 // 回复当前文件服务器的信息/状态
-public class Online extends Mservlet {
+
+@ServletAnnotation(name = "服务监测",path = "/online")
+public class Online extends CustomServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -53,7 +51,7 @@ public class Online extends Mservlet {
             map.put("zip", WebServer.domain + "/zip");
             //obs下载地址
             map.put("obs_download",HWOBSServer.convertLocalFileToOBSUrl(""));
-            //cnd
+            //cnd下载地址
             map.put("cnd_download",HWOBSServer.convertLocalFileToCDNUrl(""));
             writeJson(resp,map);
         }else{
@@ -65,8 +63,11 @@ public class Online extends Mservlet {
             }
             if (params.equals("lastRequest")){
                 StringBuilder s = new StringBuilder();
-                for (Thread thread : lastAccessRequestMap.keySet()){
-                    s.append("<br/>").append(thread).append(" >> ").append(lastAccessRequestMap.get(thread));
+                List<Thread> list = new ArrayList<>(lastAccessRequestMap.keySet());
+                list.sort((o1, o2) -> (int) (o1.getId()-o2.getId()));
+
+                for (Thread thread : list){
+                    s.append("<br/>").append(thread).append(" :: ").append(lastAccessRequestMap.get(thread));
                 }
                 writeString(resp, s.toString(),true);
             }
@@ -87,7 +88,7 @@ public class Online extends Mservlet {
                                 "<br/>\t" + "JVM 内存 已使用" + "\t" + byteLength2StringShow(getJvmUsedMemory()) +
 
                                 "<br/>\t" + "JVM CPU 已使用" + "\t" + percent.format(getProcessCpuLoad()) +
-                                "<br/>\t" + "JVM CPU 已使用(线程总和)" + "\t" + percent.format(SysUtils.getInstance().getProcessCpu()) +
+                                "<br/>\t" + "JVM CPU 已使用(线程总和)" + "\t" + percent.format(SysUtil.getInstance().getProcessCpu()) +
 
                                 "<br/>\t" + "JVM 线程 总数" + "\t" + tmx.getThreadCount() +
                                 "<br/>\t" + "JVM 线程 活跃数" + "\t" + Thread.activeCount() +

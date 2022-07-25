@@ -44,7 +44,7 @@ die () {
     exit 1
 }
 
-# server.OS specific support (must be 'true' or 'false').
+# server.xdoc.OS specific support (must be 'true' or 'false').
 cygwin=false
 msys=false
 darwin=false

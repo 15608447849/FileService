@@ -8,11 +8,12 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Zip;
 import org.apache.tools.ant.types.FileSet;
-import server.HuaWeiOBS.HWOBSServer;
-import server.HuaWeiOBS.OBSUploadPoolUtil;
-import server.servlet.beans.result.Result;
-import server.prop.WebServer;
-import server.servlet.iface.Mservlet;
+import server.hwobs.HWOBSServer;
+import server.hwobs.HWOBSUpload;
+import server.undertow.ServletAnnotation;
+import server.undertow.ServletResult;
+import server.undertow.WebServer;
+import server.undertow.CustomServlet;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -20,18 +21,18 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.util.*;
 
-import static server.servlet.beans.operation.ZipUtils.checkPaths;
-import static server.servlet.beans.result.Result.RESULT_CODE.*;
+import static server.comm.ZipUtil.checkPaths;
+import static server.undertow.ServletResult.RESULT_CODE.*;
 
 /**
  * Created by user on 2018/12/17.
  * 传递 需要打包下载的文件的相对路径
  * 生成zip包 发送zip地址
  */
-public class GenerateZip extends Mservlet {
+@ServletAnnotation(name = "指定文件列表生成ZIP",path = "/zip")
+public class GenerateZip extends CustomServlet {
 
     public static final String ZIP_TEMP_DIR_NAME = FileTool.SEPARATOR+"zip"+FileTool.SEPARATOR;
-
 
     /**
      *
@@ -99,7 +100,7 @@ public class GenerateZip extends Mservlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setHeader("Content-type", "text/html;charset=UTF-8");
-        Result result = new Result().value(UNKNOWN);
+        ServletResult result = new ServletResult().value(UNKNOWN);
         List<String> pathList = filterData(req.getHeader("path-list"));
 
         Log4j.info("[ZIP]指定文件列表\n\t"+ pathList);
@@ -122,21 +123,22 @@ public class GenerateZip extends Mservlet {
             //完成 删除目录
             //compressDirt.delete();
 
-            Log4j.info("生成ZIP文件: " + zipLocalPath +
-                    " ,耗时: "+ (System.currentTimeMillis() - time)+" 毫秒");
+            Log4j.info("生成ZIP文件: " + zipLocalPath +" ,耗时: "+ (System.currentTimeMillis() - time)+" 毫秒");
 
+            String downloadUrlPrev = WebServer.domain;
             //上传OBS
-            boolean success = OBSUploadPoolUtil.uploadTempFileToOBSExecute(zipLocalPath);
-            //判断下载前缀
-            String downloadUrlPrev = success? HWOBSServer.convertLocalFileToOBSUrl("") :WebServer.domain;
-            //返回ZIP包URL
-            result.data = zipLocalPath.replace(WebServer.rootFolderStr,downloadUrlPrev);
+            /*
+            boolean success = HWOBSUpload.uploadTempFileToOBSExecute(zipLocalPath);
+            if (success){
+                downloadUrlPrev= HWOBSServer.convertLocalFileToOBSUrl("");
+            }
+            */
 
-            result.value(SUCCESS);
+            //返回ZIP包URL
+            result.setData(zipLocalPath.replace(WebServer.rootFolderStr,downloadUrlPrev));
 
         } catch (Exception e) {
-            result.data = e.getMessage();
-            result.value(PARAM_ERROR);
+            result.setError(e.getMessage());
         }
         writeJson(resp,result);
     }

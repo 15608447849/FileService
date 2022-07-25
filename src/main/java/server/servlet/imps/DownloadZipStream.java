@@ -1,40 +1,22 @@
 package server.servlet.imps;
 
 
-import bottle.util.EncryptUtil;
-import bottle.util.FileTool;
 import bottle.util.Log4j;
-import org.apache.commons.codec.CharEncoding;
-import org.apache.commons.io.FileUtils;
-import org.apache.tools.ant.Project;
-import org.apache.tools.ant.taskdefs.Zip;
-import org.apache.tools.ant.types.FileSet;
-import server.HuaWeiOBS.HWOBSServer;
-import server.HuaWeiOBS.OBSUploadPoolUtil;
-import server.prop.WebServer;
-import server.servlet.beans.result.Result;
-import server.servlet.iface.Mservlet;
+import server.undertow.ServletAnnotation;
+import server.undertow.WebServer;
+import server.undertow.CustomServlet;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import static server.servlet.beans.operation.ZipUtils.checkPaths;
-import static server.servlet.beans.result.Result.RESULT_CODE.*;
-import static server.servlet.imps.GenerateZip.ZIP_TEMP_DIR_NAME;
 
 /**
  * Created by user on 2018/12/17.
@@ -42,10 +24,10 @@ import static server.servlet.imps.GenerateZip.ZIP_TEMP_DIR_NAME;
  * 生成zip流输出
  * GET  > http://127.0.0.1:8080/downloadZip?zip-name=下载的zip名字.zip&path-list=/defaults/1/ERP.vsdx(需要重命名则添加小括号.vsdx);下一个路径
  * POST >  http://127.0.0.1:8080/downloadZip  header = { "path-list" :  "/defaults/1/ERP.vsdx; /defaults/2.png"  , "zip-name":"可以没有,默认时间戳命名"}
- *
+ * 暂未使用
  */
-public class DownloadZipStream extends Mservlet {
-
+@ServletAnnotation(name = "指定文件列表下载ZIP数据流",path = "/downloadZip")
+public class DownloadZipStream extends CustomServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
