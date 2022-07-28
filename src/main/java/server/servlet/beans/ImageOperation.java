@@ -7,7 +7,9 @@ import bottle.util.FileTool;
 import bottle.util.GoogleGsonUtil;
 import bottle.util.Log4j;
 import server.hwobs.HWOBSAgent;
+import server.servlet.imps.FileErgodic;
 import server.sqlites.tables.SQLiteFileTable;
+import server.undertow.CustomResourceManager;
 import server.undertow.WebServer;
 
 import java.io.File;
@@ -124,7 +126,9 @@ public class ImageOperation{
         for (String localPath : localFilePaths){
             String relativePath = localPath.replace(WebServer.rootFolderStr,"");
             String httpUrl = WebServer.domain + relativePath;
-            SQLiteFileTable.addFile_LOCAL(relativePath,httpUrl);
+            SQLiteFileTable.addFile_LOCAL(relativePath,httpUrl);// 添加记录
+            CustomResourceManager.removeCache(relativePath);// 移除缓存
+            FileErgodic.removeCache(relativePath);
         }
 
     }

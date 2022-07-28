@@ -53,19 +53,7 @@ public class GenerateZip extends CustomServlet {
 
             String zipLocalPath  = compressZip(compressDirt);
 
-            //完成 删除目录
-            //compressDirt.delete();
-
-
-            String downloadUrlPrev = WebServer.domain;
-            //上传OBS
-            /*
-            boolean success = HWOBSAgent.uploadTempFileToOBSExecute(zipLocalPath);
-            if (success){
-                downloadUrlPrev= HWOBSServer.convertLocalFileToOBSUrl("");
-            }
-            */
-            String url = zipLocalPath.replace(WebServer.rootFolderStr,downloadUrlPrev);
+            String url = zipLocalPath.replace(WebServer.rootFolderStr,WebServer.domain);
 
             Log4j.info("生成ZIP文件: " + zipLocalPath +" ,耗时: "+ (System.currentTimeMillis() - time)+" 毫秒 URL = " + url);
 

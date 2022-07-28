@@ -8,6 +8,7 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import server.comm.FilePathUtil;
 import server.sqlites.tables.SQLiteFileTable;
 import server.sqlites.tables.SQLiteListTable;
+import server.undertow.CustomResourceManager;
 import server.undertow.ServletAnnotation;
 import server.undertow.ServletResult;
 import server.servlet.beans.UploadFileItemResult;
@@ -94,12 +95,5 @@ public class FileUpLoad extends CustomServlet {
         }
     }
 
-    protected void subHook(HttpServletRequest req, List<UploadFileItemResult> resultList){
-        // 记录文件
-        for (UploadFileItemResult it : resultList){
-            if (it.success){
-                SQLiteFileTable.addFile_LOCAL(it.relativePath,it.httpUrl);
-            }
-        }
-    }
+    protected void subHook(HttpServletRequest req, List<UploadFileItemResult> resultList){ }
 }

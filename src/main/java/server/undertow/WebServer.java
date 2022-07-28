@@ -9,6 +9,9 @@ import bottle.util.Log4j;
 import io.undertow.Undertow;
 import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
+import io.undertow.server.handlers.cache.DirectBufferCache;
+import io.undertow.server.handlers.resource.CachingResourceManager;
+import io.undertow.server.handlers.resource.PathResourceManager;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
@@ -21,6 +24,7 @@ import server.servlet.imps.*;
 import javax.servlet.DispatcherType;
 import javax.servlet.Servlet;
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.Set;
 
 
@@ -81,6 +85,12 @@ public class WebServer {
 
 //                        .setResourceManager(
 //                                new PathResourceManager(Paths.get(WebServer.rootPath), 16*4069L)
+//                        )
+//                        .setResourceManager(
+//                                new CachingResourceManager(
+//                                        1000,1024*1024*5,new DirectBufferCache(100,100,1024*1024*5),
+//                                        new CustomResourceManager(rootPath),10
+//                                )
 //                        )
                         .setResourceManager(
                                 new CustomResourceManager(rootPath)

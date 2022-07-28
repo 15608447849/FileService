@@ -3,6 +3,8 @@ package server.servlet.imps;
 import bottle.util.GoogleGsonUtil;
 import bottle.util.Log4j;
 import bottle.util.StringUtil;
+import io.undertow.server.handlers.cache.LRUCache;
+import io.undertow.server.handlers.resource.Resource;
 import server.hwobs.HWOBSAgent;
 import server.undertow.ServletAnnotation;
 import server.undertow.WebServer;
@@ -25,6 +27,17 @@ import static server.comm.SuffixConst.*;
 @ServletAnnotation(name = "遍历文件列表",path = "/ergodic")
 public class FileErgodic extends CustomServlet {
 
+    private final static LRUCache<String, List<String>> cache = new LRUCache<>(10000,-1);
+
+    public static void removeCache(String path){
+        int symIndex = path.lastIndexOf(".");
+        if (symIndex>0){
+            symIndex = path.lastIndexOf("/");
+            path = path.substring(0,symIndex);
+        }
+        String remotePath = checkDirPath(path);
+        cache.remove(remotePath);
+    }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -84,16 +97,27 @@ public class FileErgodic extends CustomServlet {
     }
 
     private List<String> ergodicFolder(String path, boolean isSub, String filterSuffix) {
+
+
+
+
         String remotePath = checkDirPath(path);
         String localPath = WebServer.rootFolderStr + remotePath;
-
         int localFileSize = 0;
         int remoteFileSize = 0;
 
         //检查目录 返回 子文件列表
-        List<String> respList = new ArrayList<>();
+        List<String> respList = cache.get(remotePath);
+        if(respList != null) return respList;
+
+        respList = new ArrayList<>();
 
         try {
+            // 遍历远程目录
+            List<String> list_remote = HWOBSAgent.ergodicDirectory(remotePath,isSub,true);
+            remoteFileSize = list_remote.size();
+            respList.addAll(list_remote);
+
             File dict = new File(localPath);
             if (dict.exists() && dict.isDirectory()){
                 // 遍历本地目录
@@ -101,11 +125,6 @@ public class FileErgodic extends CustomServlet {
                 localFileSize = list.size();
                 respList.addAll(list );
             }
-
-            // 遍历远程目录
-            List<String> list_remote = HWOBSAgent.ergodicDirectory(remotePath,isSub,true);
-            remoteFileSize = list_remote.size();
-            respList.addAll(list_remote);
 
             Set<String> duplicate = new HashSet<>();
             // 去重及过滤
@@ -123,6 +142,7 @@ public class FileErgodic extends CustomServlet {
                 Log4j.info("遍历 "+ remotePath +" OBS 文件个数: " + remoteFileSize +
                         " , LOC 文件个数: " + localFileSize +
                         " , 返回文件列表: " + GoogleGsonUtil.javaBeanToJson(respList) );
+                cache.add(remotePath,respList);
             }
 
         } catch (Exception e) {

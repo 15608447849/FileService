@@ -2,6 +2,7 @@ package server.undertow;
 
 import bottle.util.Log4j;
 import io.undertow.servlet.spec.HttpServletRequestImpl;
+import io.undertow.servlet.spec.HttpServletResponseImpl;
 import server.undertow.WebServer;
 
 import javax.servlet.*;
@@ -28,10 +29,8 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
         //Log4j.info(" AccessControlAllowOriginFilter init "+ filterConfig.getServletContext());
     }
 
-
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-
 
 
         StringBuilder sb = new StringBuilder();
@@ -39,7 +38,8 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
         sb.append( request.getRemotePort()).append(" >> ");
 
 
-        Log4j.debug( " 接入访问: " + request);
+        Log4j.debug( " 接入访问: " + request );
+
 
         if (request instanceof HttpServletRequestImpl){
             HttpServletRequestImpl imp = (HttpServletRequestImpl) request;
