@@ -25,7 +25,7 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
-        //Log4j.info(Thread.currentThread()+ " AccessControlAllowOriginFilter init "+ filterConfig.getServletContext());
+        //Log4j.info(" AccessControlAllowOriginFilter init "+ filterConfig.getServletContext());
     }
 
 
@@ -38,7 +38,8 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
         sb.append( request.getRemoteAddr()).append(":");
         sb.append( request.getRemotePort()).append(" >> ");
 
-        Log4j.info(Thread.currentThread()+ " 接入访问: " + request);
+
+        Log4j.debug( " 接入访问: " + request);
 
         if (request instanceof HttpServletRequestImpl){
             HttpServletRequestImpl imp = (HttpServletRequestImpl) request;

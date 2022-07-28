@@ -59,8 +59,8 @@ public interface IFSClient {
 	ObsFSBucket newBucket(NewBucketRequest request) throws ObsException;
 	
 	/**
-	 * Specify whether to enable the file gateway feature for the bucket. 
-	 * @param request Request parameters for specifying whether to enable the file gateway feature for the bucket
+	 * Specify whether to isEnable the file gateway feature for the bucket.
+	 * @param request Request parameters for specifying whether to isEnable the file gateway feature for the bucket
 	 * @return Common response headers
 	 * @throws ObsException OBS SDK self-defined exception, thrown when the interface fails to be called or access to OBS fails
 	 */

@@ -1,7 +1,10 @@
 package server.undertow;
+import bottle.util.Log4j;
 import io.undertow.server.handlers.resource.PathResourceManager;
 import io.undertow.server.handlers.resource.Resource;
-import server.hwobs.HWOBSUpload;
+import io.undertow.server.handlers.resource.URLResource;
+import server.hwobs.HWOBSAgent;
+
 import java.nio.file.Paths;
 
 
@@ -12,16 +15,22 @@ public class CustomResourceManager extends PathResourceManager {
     }
     @Override
     public Resource getResource(String p) {
-//        Log4j.info("获取本地资源: "+ p);
         Resource resource = null;
         try {
-            resource = super.getResource(p);
+            if (p.equals("/favicon.ico")){
+                resource = new URLResource( Thread.currentThread().getContextClassLoader().getResource("favicon.ico"),null);
+            }
             if (resource == null){
-                return HWOBSUpload.getResource(p);
+                resource = super.getResource(p);
+//                Log4j.info("获取本地资源: "+ p +" "+ resource);
+                if (resource == null){
+                    resource = HWOBSAgent.getResource(p);
+                }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("",e);
         }
+
         return resource;
     }
 }

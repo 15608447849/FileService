@@ -8,8 +8,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Zip;
 import org.apache.tools.ant.types.FileSet;
-import server.hwobs.HWOBSServer;
-import server.hwobs.HWOBSUpload;
 import server.undertow.ServletAnnotation;
 import server.undertow.ServletResult;
 import server.undertow.WebServer;
@@ -32,7 +30,53 @@ import static server.undertow.ServletResult.RESULT_CODE.*;
 @ServletAnnotation(name = "指定文件列表生成ZIP",path = "/zip")
 public class GenerateZip extends CustomServlet {
 
-    public static final String ZIP_TEMP_DIR_NAME = FileTool.SEPARATOR+"zip"+FileTool.SEPARATOR;
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.setHeader("Content-type", "text/html;charset=UTF-8");
+        ServletResult result = new ServletResult().value(UNKNOWN);
+        List<String> pathList = filterData(req.getHeader("path-list"));
+
+        Log4j.info("[ZIP] 指定文件列表\t"+ pathList);
+
+        try {
+            long time = System.currentTimeMillis();
+
+            if(pathList.size() == 0) {
+                throw new FileNotFoundException("没有指定需要打包的资源列表");
+            }
+
+            File compressDirt = cpFileListToDir(pathList);
+
+            if (compressDirt==null || !compressDirt.exists()){
+                throw new FileNotFoundException("没有存在一个可批量打包的文件");
+            }
+
+            String zipLocalPath  = compressZip(compressDirt);
+
+            //完成 删除目录
+            //compressDirt.delete();
+
+
+            String downloadUrlPrev = WebServer.domain;
+            //上传OBS
+            /*
+            boolean success = HWOBSAgent.uploadTempFileToOBSExecute(zipLocalPath);
+            if (success){
+                downloadUrlPrev= HWOBSServer.convertLocalFileToOBSUrl("");
+            }
+            */
+            String url = zipLocalPath.replace(WebServer.rootFolderStr,downloadUrlPrev);
+
+            Log4j.info("生成ZIP文件: " + zipLocalPath +" ,耗时: "+ (System.currentTimeMillis() - time)+" 毫秒 URL = " + url);
+
+            //返回ZIP包URL
+            result.setData(url);
+
+        } catch (Exception e) {
+            result.setError(e.getMessage());
+        }
+        writeJson(resp,result);
+    }
 
     /**
      *
@@ -41,7 +85,7 @@ public class GenerateZip extends CustomServlet {
      */
     private File cpFileListToDir(List<String> paths) throws  Exception{
 
-        String storageDirPath = WebServer.GET_TEMP_FILE_DIR()+ ZIP_TEMP_DIR_NAME;
+        String storageDirPath = WebServer.GET_TEMP_FILE_DIR()+ "/zip/";
 
         List<File> fileList = checkPaths(paths,storageDirPath);
         if (fileList.size() > 0){
@@ -97,49 +141,4 @@ public class GenerateZip extends CustomServlet {
         return zipFile.getCanonicalPath();
     }
 
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        resp.setHeader("Content-type", "text/html;charset=UTF-8");
-        ServletResult result = new ServletResult().value(UNKNOWN);
-        List<String> pathList = filterData(req.getHeader("path-list"));
-
-        Log4j.info("[ZIP]指定文件列表\n\t"+ pathList);
-
-        try {
-            long time = System.currentTimeMillis();
-
-            if(pathList.size() == 0) {
-                throw new FileNotFoundException("没有指定需要打包的资源列表");
-            }
-
-            File compressDirt = cpFileListToDir(pathList);
-
-            if (compressDirt==null || !compressDirt.exists()){
-                throw new FileNotFoundException("没有存在一个可批量打包的文件");
-            }
-
-            String zipLocalPath  = compressZip(compressDirt);
-
-            //完成 删除目录
-            //compressDirt.delete();
-
-            Log4j.info("生成ZIP文件: " + zipLocalPath +" ,耗时: "+ (System.currentTimeMillis() - time)+" 毫秒");
-
-            String downloadUrlPrev = WebServer.domain;
-            //上传OBS
-            /*
-            boolean success = HWOBSUpload.uploadTempFileToOBSExecute(zipLocalPath);
-            if (success){
-                downloadUrlPrev= HWOBSServer.convertLocalFileToOBSUrl("");
-            }
-            */
-
-            //返回ZIP包URL
-            result.setData(zipLocalPath.replace(WebServer.rootFolderStr,downloadUrlPrev));
-
-        } catch (Exception e) {
-            result.setError(e.getMessage());
-        }
-        writeJson(resp,result);
-    }
 }

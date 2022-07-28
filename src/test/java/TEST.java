@@ -13,10 +13,10 @@ public class TEST {
 //        System.out.println(set);
 
 //        List<String> list = new ArrayList<>(set);
-//        HWOBSServer.deleteFile(list);
-        HWOBSServer.uploadLocalFile("C:/Users/user/Downloads/tenpaycert_c47.exe","/tenpaycert_c47.exe");
+//        HWOBSServer.deleteRemoteFile(list);
+//        HWOBSServer.uploadLocalFile("C:/Users/user/Downloads/tenpaycert_c47.exe","/tenpaycert_c47.exe");
 //        String url = HWOBSServer.convertLocalFileToObsUrl("/tenpaycert_c47.exe");
 //        System.out.println( url );
-        HWOBSServer.stop();
+//        HWOBSServer.stop();
     }
 }

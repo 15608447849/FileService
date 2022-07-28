@@ -48,11 +48,22 @@ public class FileErgodicExecute extends SimpleFileVisitor<Path> {
             e1.printStackTrace();
         }
 
-        if (replaceRoot){
-            return pathList.stream().map( path -> path.toUri().toString().replace(root.toUri().toString(),"/") ).collect(Collectors.toList());
-        }else {
-            return pathList.stream().map( path -> path.toUri().toString() ).collect(Collectors.toList());
+        List<String> list = new ArrayList<>();
+
+        for (Path path : pathList) {
+            try {
+
+                String str = path.toUri().getPath();
+                if (replaceRoot){
+                    str = str.replace(root.toUri().getPath(),"/");
+                }
+                list.add(str);
+            } catch (Exception ignored) {
+
+            }
         }
+
+       return list;
     }
 
     public List<String> start() {

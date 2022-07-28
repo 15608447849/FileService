@@ -60,12 +60,12 @@ public class OperationUtil {
         return suffix;
     }
 
+    // 文件后缀变更
     public static String filePathAndStrToSuffix(String path,String var){
         int i = path.lastIndexOf(".");
         String startStr = path.substring(0,i);
         String endStr = path.substring(i);
-        String str = startStr+var+endStr;
-        return str;
+        return startStr+var+endStr;
     }
 
 
@@ -118,7 +118,7 @@ public class OperationUtil {
                     .toOutputStream(fos);
             return true;
         }catch (Exception e){
-            Log4j.error("",e);
+            Log4j.error("图片裁剪异常 "+ image,e);
         }
         return false;
     }
@@ -131,7 +131,7 @@ public class OperationUtil {
                     .toOutputStream(fos);
             return true;
         } catch (Exception e) {
-            Log4j.error("",e);
+            Log4j.error("图片最小比例压缩异常 "+ image,e);
         }
        return false;
     }
@@ -142,8 +142,6 @@ public class OperationUtil {
         try {
             if (!image.exists() || image.length() == 0) throw new FileNotFoundException(image.getCanonicalPath()) ;
 
-            if (!isImage(image)) throw  new IllegalArgumentException(image+" 不是标准图片类型") ;
-
             if (spSize < 512*102L) spSize = 512*1024L;
 
             if (spSize<image.length()){
@@ -152,14 +150,16 @@ public class OperationUtil {
             boolean isSuccess = false;
             if ( image.length() > spSize ){
                 isSuccess = FFMPEGTool.imageCompress_(image,compress);//使用ffmpeg
+                Log4j.info("FFMPEG 压缩处理: "+ image);
             }
             if (!isSuccess){
                 FileTool.copyFile(image,compress);// 复制图片到临时图片
                 imageCompress(compress,spSize,0);// 对临时图片进行处理
+                Log4j.info("tinypng 压缩处理: "+ image);
             }
             return compress.length() > 0;
         } catch (Exception e) {
-            Log4j.error("",e);
+            Log4j.error("图片压缩异常 "+ image,e);
         }
         return false;
     }
@@ -208,30 +208,52 @@ public class OperationUtil {
         return convertedColor;
     }
 
+    //判断文件是否为图片
+    public static void getImageType(String filename) throws IOException {
+        File file = new File(filename);
+        ImageInputStream image = ImageIO.createImageInputStream(new FileInputStream(file));
+        Iterator<ImageReader> readers = ImageIO.getImageReaders(image);
+        String formatName = readers.next().getFormatName();
+        System.out.println(formatName);
+    }
 
+    public static void main(String[] args) {
+        try {
+            /*
+            markImageByText("onekdrug",
+                    new File("C:\\Users\\Administrator\\Pictures\\2.jpg"),
+                    0,
+                    new Color(250, 1, 255),
+                    0.2f,
+                    LogoPlace.RIGHT_BOTTOM.value);
+                    */
+            System.out.println(getFormatName(new File("C:\\Users\\Administrator\\Pictures\\3.jpg")));
 
-    private static String getFormatName(Object o) {
-        String type = "NODE" ;
-        try ( ImageInputStream iis = ImageIO.createImageInputStream(o);){
-            Iterator<ImageReader> iter = ImageIO.getImageReaders(iis);
-            if (!iter.hasNext()) {
-                return null;
-            }
-            type = iter.next().getFormatName();
-        } catch (IOException ignored) {
+            imageCompress_scale_min(new File("C:\\Users\\Administrator\\Pictures\\3.jpg"),
+                    new File("C:\\Users\\Administrator\\Pictures\\3-min.jpg"));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+
+    // 获取图片格式
+    private static String getFormatName(File file) {
+        String type = "NODE" ;
+        try ( ImageInputStream iis = ImageIO.createImageInputStream(new FileInputStream(file))){
+            Iterator<ImageReader> iter = ImageIO.getImageReaders(iis);
+            if (iter.hasNext()) {
+                type = iter.next().getFormatName();
+            }
+
+        } catch (Exception ignored) { }
         return type.toLowerCase();
     }
 
-    public  static boolean isImageSuffix(File file){
-        return file.getName().endsWith("jpg") || file.getName().endsWith("png") || file.getName().endsWith("jpeg");
-    }
-
-    //判断文件是否为图片
-    public static boolean isImage(File file){
+    // 判断是否图片后缀
+    public  static boolean isImageType(File file){
         String type = getFormatName(file);
-        if (type == null) return false;
-        return type.equals("jpeg") || type.equals("png");
+        return type.equalsIgnoreCase("jpeg") || type.equalsIgnoreCase("jpeg") || type.equalsIgnoreCase("png");
     }
 
     //获取图片大小
@@ -241,7 +263,7 @@ public class OperationUtil {
             BufferedImage srcImg = ImageIO.read(image);
             return new int[]{srcImg.getWidth(), srcImg.getHeight()};
         } catch (Exception e) {
-            Log4j.error("文件服务错误",e);
+            Log4j.error("获取图片大小异常 "+ image,e);
         }
         return new int[]{-1,-1};
     }
@@ -260,7 +282,6 @@ public class OperationUtil {
 
 
     private static float[] getPositionByHeight(int sw,int sh,int lw,int lh,int posType){
-
         //判断大小
         if (sw < lw || sh < lh) return new float[]{0,0};
         //默认居中
@@ -282,6 +303,7 @@ public class OperationUtil {
         }
         return new float[]{x,y};
     }
+
 
     //添加文字水印
     @SuppressWarnings("unchecked")
@@ -341,7 +363,7 @@ public class OperationUtil {
             }
 
         } catch (Exception e) {
-            Log4j.error("",e);
+            Log4j.error("处理水印文字异常 "+ image,e);
         }
         return image;
     }
@@ -360,7 +382,7 @@ public class OperationUtil {
             is = url.openStream();
             bufferedImage = ImageIO.read(is);
         } catch (IOException e) {
-            Log4j.error("文件服务错误",e);
+            Log4j.error("获取远端图片异常 "+ imageURL,e);
         } finally {
             try { if(is!=null) is.close(); } catch (IOException e) { Log4j.error("文件服务错误",e); }
         }
@@ -416,7 +438,7 @@ public class OperationUtil {
             ImageIO.write(buffImg, fileSuffix(image), os);
             return image.getAbsoluteFile();
         }catch (Exception e){
-            Log4j.error("",e);
+            Log4j.error("处理水印图片异常 "+ image,e);
         }finally {
             try {
                 if (null != os) os.close();
@@ -447,7 +469,7 @@ public class OperationUtil {
                 return imageSrc.getAbsoluteFile();
             }
         } catch (Exception e) {
-            Log4j.error("",e);
+            Log4j.error("处理背景留白异常 "+ imageSrc,e);
         }
         return imageSrc;
     }

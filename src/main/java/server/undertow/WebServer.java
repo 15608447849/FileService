@@ -45,28 +45,32 @@ public class WebServer {
     private static void initRootDir() throws Exception{
         rootFolder = new File(rootPath);
         rootFolderStr = rootFolder.getCanonicalPath();
-        Log4j.info("本地文件根目录: "+ rootFolderStr);
 
         if (!rootFolder.exists() ){
             if (!rootFolder.mkdirs()) throw new IllegalStateException("启动失败,无效的主目录路径:"+rootFolder);
         }
 
-        File temporaryFolder = new File(rootFolder.getParent() ,rootFolder.getName()+"_temporary");
+        File temporaryFolder = new File(rootFolder.getParent() ,"file_server_temporary");
         if (!temporaryFolder.exists() ){
             if (!temporaryFolder.mkdirs()) throw new IllegalStateException("启动失败,无效的临时目录路径:"+temporaryFolder);
         }
 
         // 设置临时文件
         FileUpLoad.setTemporaryFolder(1024*10,1024 * 1024 * 1024 * 5L,temporaryFolder);
+
+        Log4j.info("本地文件根目录: "+ rootFolderStr +" 临时目录: "+ temporaryFolder.getCanonicalPath());
+
+
     }
 
     //临时文件目录
     public static String GET_TEMP_FILE_DIR(){
-        return rootFolderStr + FileTool.SEPARATOR+ "temp" ;
+        return rootFolderStr + File.separator+ "temp" ;
     }
 
     private static void loadUndertow() throws Exception{
             if (instance==null){
+                Log4j.info("尝试监听本地地址:  " + webHost + " " + webPort );
                 //开启web文件服务器
                 DeploymentInfo servletBuilder = Servlets.deployment()
                         .setClassLoader(LunchServer.class.getClassLoader())
@@ -153,17 +157,32 @@ public class WebServer {
         }
     }
 
+    public static void initWebServer(int port){
+        if(port>0 && webPort!=port) {
+
+            try {
+                webPort = port;
+                Log4j.info("更改web端口 "+ webPort);
+                stopWebServer();
+                loadUndertow();
+            } catch (Exception e) {
+                throw new RuntimeException();
+            }
+        }
+    }
+
     public static void startWebServer() {
+
         if(instance != null){
             instance.start();
             startTime = System.currentTimeMillis();
-            Log4j.info("监听本地地址:  " + webHost + " " + webPort );
         }
     }
 
     public static void stopWebServer(){
         if (instance != null){
             instance.stop();
+            instance = null;
             startTime = 0;
         }
     }

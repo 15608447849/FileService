@@ -46,7 +46,7 @@ public class SQLiteFileTable {
        // 直接插入
        final String SQL_INSERT = String.format("REPLACE INTO %s (%s,%s,%s,%s) VALUES (?,?,?,?);",FILE_TABLE,FILE_LOCAL_TABLE_PATH,FILE_LOCAL_TABLE_POS, FILE_LOCAL_TABLE_URL, FILE_LOCAL_TABLE_UPDATE);
        int res = executeWriteSQL(SQL_INSERT,path,pos,url,TimeTool.date_yMd_Hms_2Str(new Date()));
-       System.out.println("[" +pos+ "] 添加文件记录 "+ path+" -> "+ url);
+//       System.out.println("[" +pos+ "] 添加文件记录 "+ path+" -> "+ url);
        return res>0;
     }
 

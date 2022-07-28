@@ -1,8 +1,9 @@
 package server.servlet.imps;
 
+import bottle.util.GoogleGsonUtil;
 import bottle.util.Log4j;
 import bottle.util.StringUtil;
-import server.hwobs.HWOBSServer;
+import server.hwobs.HWOBSAgent;
 import server.undertow.ServletAnnotation;
 import server.undertow.WebServer;
 import server.comm.FileErgodicExecute;
@@ -16,22 +17,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-import static server.undertow.ServletResult.RESULT_CODE.EXCEPTION;
-import static server.undertow.ServletResult.RESULT_CODE.SUCCESS;
+import static server.comm.FilePathUtil.checkDirPath;
+import static server.comm.FilePathUtil.checkFilePath;
+import static server.comm.SuffixConst.*;
 
 // 文件遍历 查询是否存在文件
 @ServletAnnotation(name = "遍历文件列表",path = "/ergodic")
 public class FileErgodic extends CustomServlet {
 
-
-    private static boolean isFilter(String[] strArray, String fn){
-        if (strArray!=null && strArray.length>0){
-            for (String str: strArray){
-                if (fn.contains(str)) return true;
-            }
-        }
-        return false;
-    }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -39,81 +32,22 @@ public class FileErgodic extends CustomServlet {
         ServletResult result = new ServletResult();
 
         try {
-            String path = req.getHeader("specify-path");// 指定目录
+            String filePath = req.getHeader("specify-file");// 指定文件
+            String dictPath = req.getHeader("specify-path");// 指定目录
             String sub = req.getHeader("ergodic-sub");// true-需要遍历子目录
-            String filter = req.getHeader("filter-array");// 过滤后缀
+            String filterSuffix = req.getHeader("filter-array");// 过滤后缀
 
-            boolean isSub = true;
+            boolean isSub = false;
             if (!StringUtil.isEmpty(sub)){
                 isSub = Boolean.parseBoolean(sub);
             }
 
-            String[] filterArray = null;
-            if (!StringUtil.isEmpty(filter)){
-                filterArray = filter.split(",");
-            }
-
-            if (StringUtil.isEmpty(path)) throw new IllegalAccessException("请设置需要遍历的目录路径");
-
-            path = path.replace(WebServer.domain,"");
-
-            boolean checkDict= path.endsWith("/");
-
-            String remotePath = checkDirPath(path);
-            String localPath = WebServer.rootFolderStr + remotePath;
-
-
-            if (checkDict){
-                //检查目录 返回 子文件列表
-                List<String> list = new ArrayList<>();
-                result.setData(list);
-
-                File dict = new File(localPath);
-                if (dict.exists() && dict.isDirectory()){
-                    // 遍历本地目录
-                    list.addAll( new FileErgodicExecute( path ,isSub ).start(true ) );
-                }
-                if (HWOBSServer.enable){
-                    // 遍历远程目录
-                   Set<String> set = HWOBSServer.ergodicDirectory(remotePath,isSub);
-                    list.addAll(new ArrayList<>(set));
-                }
-
-                Set<String> duplicate = new HashSet<>();
-                // 尝试过滤和去重
-                ListIterator<String> iterator = list.listIterator();
-                while (iterator.hasNext()){
-                    String str = iterator.next();
-                    // 去重
-                    if (!duplicate.add(str)){
-                        iterator.remove();
-                    }
-                    // 过滤
-                    int index = str.indexOf("/");
-                    if (index>0){
-                        str = str.substring(index+1);
-                    }
-                    if (isFilter(filterArray,str)){
-                        iterator.remove();
-                    }
-                }
-
-
+            if (filePath!=null && filePath.length()>0){
+                result.setData(ergodicFile(filePath));
+            } else if (dictPath!=null && dictPath.length()>0){
+                result.setData(ergodicFolder(dictPath,isSub,filterSuffix));
             }else {
-                //检查文件 返回 true or false
-
-                //判断本地文件
-                File file = new File(localPath);
-                if (file.exists() && file.isFile()){
-                    result.setData(true);
-                }else {
-                    // 判断obs对象
-                    if (HWOBSServer.enable){
-                        boolean isExist = HWOBSServer.existFile(remotePath);
-                        result.setData(isExist);
-                    }
-                }
-
+                throw new IllegalAccessException("请指定需要遍历的目录路径或文件");
             }
 
         } catch (Exception e) {
@@ -121,6 +55,82 @@ public class FileErgodic extends CustomServlet {
             result.setError(e.getMessage());
         }
         writeJson(resp,result);
+    }
+
+    private Object ergodicFile(String path) {
+        String remotePath = checkFilePath(path);
+        String localPath = WebServer.rootFolderStr + remotePath;
+        boolean isExist = false;
+
+        try {
+            //判断本地文件
+            File file = new File(localPath);
+            isExist = file.exists() && file.isFile();
+//            Log4j.info("遍历 检查LOC文件: " + localPath +" file.exists() && file.isFile() = "+ isExist);
+
+            if (!isExist){
+                // 判断obs对象
+                isExist = HWOBSAgent.existRemoteFile(remotePath);
+//                Log4j.info("遍历 检查OBS对象: " + remotePath +" isExist = "+ isExist);
+            }
+
+            Log4j.info("遍历 指定文件: " + remotePath +" 是否存在: " + isExist );
+
+        } catch (Exception e) {
+            Log4j.error("文件是否存在 "+ path,e);
+        }
+
+        return isExist;
+    }
+
+    private List<String> ergodicFolder(String path, boolean isSub, String filterSuffix) {
+        String remotePath = checkDirPath(path);
+        String localPath = WebServer.rootFolderStr + remotePath;
+
+        int localFileSize = 0;
+        int remoteFileSize = 0;
+
+        //检查目录 返回 子文件列表
+        List<String> respList = new ArrayList<>();
+
+        try {
+            File dict = new File(localPath);
+            if (dict.exists() && dict.isDirectory()){
+                // 遍历本地目录
+                List<String> list =  new FileErgodicExecute( localPath ,isSub ).start( true );
+                localFileSize = list.size();
+                respList.addAll(list );
+            }
+
+            // 遍历远程目录
+            List<String> list_remote = HWOBSAgent.ergodicDirectory(remotePath,isSub,true);
+            remoteFileSize = list_remote.size();
+            respList.addAll(list_remote);
+
+            Set<String> duplicate = new HashSet<>();
+            // 去重及过滤
+            ListIterator<String> iterator = respList.listIterator();
+            while (iterator.hasNext()){
+                String str = iterator.next();
+                if (!duplicate.add(str)){ // 去重
+                    iterator.remove();
+                }else if (isErgodicNeedFilterSuffix(str,filterSuffix)){ // 过滤
+                    iterator.remove();
+                }
+            }
+
+            if (respList.size()>0){
+                Log4j.info("遍历 "+ remotePath +" OBS 文件个数: " + remoteFileSize +
+                        " , LOC 文件个数: " + localFileSize +
+                        " , 返回文件列表: " + GoogleGsonUtil.javaBeanToJson(respList) );
+            }
+
+        } catch (Exception e) {
+            Log4j.error("文件夹遍历 "+ path,e);
+        }
+
+        return respList;
+
     }
 
 }

@@ -135,7 +135,7 @@ public class XmlResponsesSaxParser {
 	
 	public <T>T parse(InputStream inputStream, Class<T> handlerClass, boolean sanitize) throws ServiceException{
 		try {
-			T handler = null;
+			T handler;
 			if(SimpleHandler.class.isAssignableFrom(handlerClass)) {
 				Constructor<T> c = handlerClass.getConstructor(XMLReader.class);
 				handler = c.newInstance(this.xr);

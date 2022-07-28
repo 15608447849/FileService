@@ -5,6 +5,7 @@ import bottle.util.Log4j;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import server.comm.FilePathUtil;
 import server.sqlites.tables.SQLiteFileTable;
 import server.sqlites.tables.SQLiteListTable;
 import server.undertow.ServletAnnotation;
@@ -50,6 +51,7 @@ public class FileUpLoad extends CustomServlet {
         diskFileItemFactory.setSizeThreshold(MEMORY_CACHE_BYTE_MAX);
     }
 
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setHeader("Content-type", "text/html;charset=UTF-8");
@@ -59,7 +61,7 @@ public class FileUpLoad extends CustomServlet {
         try {
 
             //指定对应下标的文件保存路径
-            ArrayList<String> pathList = checkDirPathByList( filterData(req.getHeader("specify-path")));
+            ArrayList<String> pathList = FilePathUtil.checkDirPathByList( filterData(req.getHeader("specify-path")));
             //指定对应下标的文件保存文件名
             ArrayList<String> fileNameList = filterData( req.getHeader("specify-filename"));
 

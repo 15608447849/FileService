@@ -22,6 +22,15 @@ import java.util.Iterator;
  */
 public class ImageDataUtils {
     //判断文件是否为图片
+    public static void getImageType(String filename) throws IOException {
+        File file = new File(filename);
+        ImageInputStream image = ImageIO.createImageInputStream(new FileInputStream(file));
+        Iterator<ImageReader> readers = ImageIO.getImageReaders(image);
+        String formatName = readers.next().getFormatName();
+        System.out.println(formatName);
+    }
+
+
     private static boolean isImage(File file){
         try
         {
@@ -272,7 +281,7 @@ public class ImageDataUtils {
 
 //        overlapImage("C:\\Users\\user\\Desktop\\test.jpg");
 
-        try {
+        /*try {
             File file = new File("C:\\Users\\user\\Desktop\\","launch.jpg");
             File file2 = new File("C:\\Users\\user\\Desktop\\","launch2.png");
             Thumbnails.of(file)
@@ -291,6 +300,14 @@ public class ImageDataUtils {
                     .scale(1f)
                     .outputQuality(0.1f)
                     .toFile(file2);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }*/
+
+
+        try {
+            getImageType("C:\\Users\\Administrator\\Pictures\\2.jpg");
+            markImageByText("onekdrug",new File("C:\\Users\\Administrator\\Pictures\\2.jpg"),0,new Color(0, 0, 255),0.2f,LogoPlace.RIGHT_BOTTOM);
         } catch (IOException e) {
             e.printStackTrace();
         }

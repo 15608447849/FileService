@@ -8,48 +8,18 @@ import bottle.util.FileTool;
 import bottle.util.Log4j;
 import org.apache.commons.fileupload.FileItem;
 import server.undertow.WebServer;
-
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-
 import static server.comm.OperationUtil.getIndexValue;
+import static server.comm.SuffixConst.isEnableSaveToLocal;
 
 /**
  * Created by user on 2017/12/14.
  */
 
-@PropertiesFilePath("/web.properties")
+
 public class FileUploadOperation {
-
-    @PropertiesName("upload.suffix.black.list")
-    public static String upload_suffix_black_list;
-    @PropertiesName("upload.suffix.white.list")
-    public static String upload_suffix_white_list;
-
-    private static String[] REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST;
-    private static String[] REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST;
-
-    static {
-        ApplicationPropertiesBase.initStaticFields(FileUploadOperation.class);
-
-        try {
-            REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST = upload_suffix_white_list.split(",");
-            Log4j.info("文件后缀白名单:\t"+Arrays.toString(REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST));
-
-        } catch (Exception e) {
-            REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST = null;
-        }
-
-        try {
-            REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST = upload_suffix_black_list.split(",");
-            Log4j.info("文件后缀黑名单:\t"+Arrays.toString(REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST));
-
-        } catch (Exception e) {
-            REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST = null;
-        }
-    }
 
     private final ArrayList<String> specifyPaths; //指定的文件保存相对路径
     private final ArrayList<String> specifyNames;//指定的文件名
@@ -84,8 +54,10 @@ public class FileUploadOperation {
             //保存文件
             UploadFileItemResult uploadResult = saveFile(fileItem,specifyPath,specifyFileName);
             //打印情况
-            Log4j.info(Thread.currentThread()
-                    +" 域名: "+areaName + ",contentType: "+ contentType+",数据大小: "+ size+",缓存位置: "+ (isMemStorage?"内存":"磁盘")
+            Log4j.info(" 域名: "+areaName
+                    +", contentType: "+ contentType
+                    +", 数据大小: "+ size
+                    +", 缓存位置: "+ (isMemStorage?"内存":"磁盘")
                     +", 实际文件名: "+areaFileName
                     +", 执行路径: " + specifyPath
                     +", 指定文件名: " + specifyFileName
@@ -111,37 +83,19 @@ public class FileUploadOperation {
             //文件 本地绝对全路径
             final String localAbsolutelyFilePath = rootPath + localRelativePath;
 
-            //获取文件后缀
-            String suffix = "";
+            String suffix = null;
             if (specifyFileName.contains(".")){
                 suffix = specifyFileName.substring(specifyFileName.lastIndexOf(".")+1); //不包含 '.'
             }
 
-            boolean suffixEnable = true;
-
-            if (REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST!=null && REFUSE_UPLOAD_SUFFIX_ARRAY_WHITE_LIST.length>0){
-                //判断后缀是否允许保存 - 白名单
-                suffixEnable = false;
-                for (String str : REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST){
-                    if (suffix.toLowerCase().equals(str)){
-                        suffixEnable = true;
-                        break;
-                    }
-                }
-            }else if (REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST!=null && REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST.length>0){
-                //判断后缀是否允许保存 - 黑名单
-                for (String str : REFUSE_UPLOAD_SUFFIX_ARRAY_BLACK_LIST){
-                    if (suffix.toLowerCase().equals(str)){
-                        suffixEnable = false;
-                        break;
-                    }
-                }
+            if (suffix == null){
+                throw new IllegalArgumentException("文件后缀不存在");
             }
 
-            if(!suffixEnable){
+
+            if(!isEnableSaveToLocal(suffix)){
                 throw new IllegalArgumentException("非法的文件后缀( "+suffix+" )");
             }
-
 
             //创建指定目录
             if (!FileTool.checkDir(localAbsolutelyDictPath)){

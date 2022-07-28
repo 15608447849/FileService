@@ -177,7 +177,7 @@ public class ObsConfiguration implements Cloneable
      * Check whether path-style access to OBS is enabled. "true" indicates that path-style access is enabled while "false" (default) indicates virtual hosted-style access is enabled.
      * Note: If the path-style access is enabled, new bucket features of OBS 3.0 are not supported.
      * 
-     * @return Whether to enable path-style access to OBS.
+     * @return Whether to isEnable path-style access to OBS.
      */
     @Deprecated
     public boolean isDisableDnsBucket()
@@ -186,10 +186,10 @@ public class ObsConfiguration implements Cloneable
     }
     
 	/**
-     * Specify whether to enable path-style access to OBS. "true" indicates that path-style access is enabled while "false" (default) indicates that virtual hosted-style access is enabled.
+     * Specify whether to isEnable path-style access to OBS. "true" indicates that path-style access is enabled while "false" (default) indicates that virtual hosted-style access is enabled.
      * Note: If the path-style access is enabled, new bucket features of OBS 3.0 are not supported.
      * 
-     * @param disableDns Whether to enable path-style access to OBS.
+     * @param disableDns Whether to isEnable path-style access to OBS.
      */
     @Deprecated
     public void setDisableDnsBucket(boolean disableDns)
@@ -332,7 +332,7 @@ public class ObsConfiguration implements Cloneable
      * Check whether path-style access to OBS is enabled. "true" indicates that path-style access is enabled while "false" (default) indicates virtual hosted-style access is enabled.
      * Note: If the path-style access is enabled, new bucket features of OBS 3.0 are not supported.
      * 
-     * @return Whether to enable path-style access to OBS.
+     * @return Whether to isEnable path-style access to OBS.
      */
     @Deprecated
 	public boolean isPathStyle() {
@@ -340,10 +340,10 @@ public class ObsConfiguration implements Cloneable
 	}
     
 	/**
-     * Specify whether to enable path-style access to OBS. "true" indicates that path-style access is enabled while "false" (default) indicates that virtual hosted-style access is enabled.
+     * Specify whether to isEnable path-style access to OBS. "true" indicates that path-style access is enabled while "false" (default) indicates that virtual hosted-style access is enabled.
      * Note: If the path-style access is enabled, new bucket features of OBS 3.0 are not supported.
      * 
-     * @param pathStyle Whether to enable path-style access to OBS.
+     * @param pathStyle Whether to isEnable path-style access to OBS.
      */
     @Deprecated
 	public void setPathStyle(boolean pathStyle) {
@@ -596,7 +596,7 @@ public class ObsConfiguration implements Cloneable
     
     /**
      * Check whether server-side verification is enabled. The default value is "false".
-     * @return Identifier specifying whether to enable server-side verification
+     * @return Identifier specifying whether to isEnable server-side verification
      */
     public boolean isValidateCertificate()
     {
@@ -604,8 +604,8 @@ public class ObsConfiguration implements Cloneable
     }
     
     /**
-     * Specify whether to enable server-side certificate verification. The default value is "false".
-     ** @param validateCertificate Identifier specifying whether to enable server-side verification
+     * Specify whether to isEnable server-side certificate verification. The default value is "false".
+     ** @param validateCertificate Identifier specifying whether to isEnable server-side verification
      */
     public void setValidateCertificate(boolean validateCertificate)
     {

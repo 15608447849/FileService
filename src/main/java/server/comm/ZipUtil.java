@@ -1,8 +1,7 @@
 package server.comm;
 
 import bottle.util.FileTool;
-import bottle.util.Log4j;
-import server.hwobs.HWOBSUpload;
+import server.hwobs.HWOBSAgent;
 import server.undertow.WebServer;
 
 import java.io.File;
@@ -66,7 +65,9 @@ public class ZipUtil {
         return null;
     }
 
-    /* 检查路径是否有效 */
+    /* 检查路径是否有效
+    * 本地或远程获取文件(下载)
+    * */
     public static List<File> checkPaths(List<String> paths,String storageDir) {
         List<File> list = new ArrayList<>();
 
@@ -81,17 +82,18 @@ public class ZipUtil {
                 // 本地文件
                 if (!path.startsWith(FileTool.SEPARATOR)) path = FileTool.SEPARATOR + path;// 保证前面有 '/'
                 file = new File(WebServer.rootFolder,  path);
+
                 if (!file.exists()){
                     // 尝试通过OBS获取
-                    String remoteUrl = HWOBSUpload.getFileURL(path);
+                    String remoteUrl = HWOBSAgent.getFileURL(path);
                     if (remoteUrl!=null){
                         file =  httpUrlToLocalFile(remoteUrl,storageDir);
                     }
-
                 }
+
             }
 
-            if (file!=null&&file.exists()&&file.isFile()){
+            if (file!=null && file.exists() && file.isFile() && file.length()>0){
                 // 加入打包列表
                 addFile(list,file);
             }

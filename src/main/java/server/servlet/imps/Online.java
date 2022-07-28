@@ -34,8 +34,6 @@ public class Online extends CustomServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setHeader("Content-type", "text/html;charset=UTF-8");
 
-//        Log4j.info( Thread.currentThread() + " 查看系统状态" );
-
         String params = req.getParameter("state");
         if (params==null){
             HashMap<String,String> map  = new HashMap<>();

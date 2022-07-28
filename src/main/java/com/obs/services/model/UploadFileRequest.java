@@ -97,7 +97,7 @@ public class UploadFileRequest extends PutObjectBasicRequest {
 	 * @param uploadFile To-be-uploaded local file
      * @param partSize Part size
      * @param taskNum Maximum number of threads used for processing upload tasks concurrently
-	 * @param enableCheckpoint Whether to enable the resumable mode
+	 * @param enableCheckpoint Whether to isEnable the resumable mode
 	 */
 	public UploadFileRequest(String bucketName, String objectKey, String uploadFile, long partSize, int taskNum,
 			boolean enableCheckpoint) {
@@ -113,7 +113,7 @@ public class UploadFileRequest extends PutObjectBasicRequest {
 	 * @param uploadFile To-be-uploaded local file
      * @param partSize Part size
      * @param taskNum Maximum number of threads used for processing upload tasks concurrently
-     * @param enableCheckpoint Whether to enable the resumable mode
+     * @param enableCheckpoint Whether to isEnable the resumable mode
 	 * @param checkpointFile File used to record resumable upload progresses
 	 */
 	public UploadFileRequest(String bucketName, String objectKey, String uploadFile, long partSize, int taskNum,
@@ -134,7 +134,7 @@ public class UploadFileRequest extends PutObjectBasicRequest {
 	 * @param uploadFile To-be-uploaded local file
      * @param partSize Part size
      * @param taskNum Maximum number of threads used for processing upload tasks concurrently
-     * @param enableCheckpoint Whether to enable the resumable mode
+     * @param enableCheckpoint Whether to isEnable the resumable mode
      * @param checkpointFile File used to record resumable upload progresses
 	 * @param enableCheckSum Whether to verify the to-be-uploaded file upon non-initial uploads in resumable upload mode
 	 */
@@ -220,7 +220,7 @@ public class UploadFileRequest extends PutObjectBasicRequest {
 	}
 
 	/**
-	 * Specify whether to enable the resumable mode.
+	 * Specify whether to isEnable the resumable mode.
 	 * 
 	 * @param enableCheckpoint Identifier specifying whether the resumable mode is enabled
 	 */

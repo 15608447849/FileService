@@ -57,7 +57,7 @@ public abstract class DefaultXmlHandler extends DefaultHandler{
 		context.removeLast();
 	}
 
-	public void characters(char ch[], int start, int length) {
+	public void characters(char[] ch, int start, int length) {
 		this.currText.append(ch, start, length);
 	}
 }

@@ -25,7 +25,6 @@ import com.obs.services.internal.utils.*;
 import com.obs.services.model.*;
 import com.obs.services.model.RestoreObjectRequest.RestoreObjectStatus;
 import com.obs.services.model.fs.*;
-import com.oef.services.model.*;
 import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
@@ -71,7 +70,7 @@ public class ObsService extends RestStorageService {
 
 		Map<String, String> getHeaders() {
 			if (this.headers == null) {
-				headers = new HashMap<String, String>();
+				headers = new HashMap<>();
 			}
 			return this.headers;
 		}
@@ -86,9 +85,9 @@ public class ObsService extends RestStorageService {
 
 	protected HeaderResponse setBucketVersioningImpl(String bucketName, VersioningStatusEnum status)
 			throws ServiceException {
-		Map<String, String> requestParams = new HashMap<String, String>();
+		Map<String, String> requestParams = new HashMap<>();
 		requestParams.put(SpecialParamEnum.VERSIONING.getOriginalStringCode(), "");
-		Map<String, String> metadata = new HashMap<String, String>();
+		Map<String, String> metadata = new HashMap<>();
 		metadata.put(CommonHeaders.CONTENT_TYPE, Mimetypes.MIMETYPE_XML);
 
 		String xml = this.getIConvertor().transVersioningConfiguration(bucketName,
@@ -119,7 +118,7 @@ public class ObsService extends RestStorageService {
 	}
 
 	protected BucketVersioningConfiguration getBucketVersioningImpl(String bucketName) throws ServiceException {
-		Map<String, String> requestParams = new HashMap<String, String>();
+		Map<String, String> requestParams = new HashMap<>();
 		requestParams.put(SpecialParamEnum.VERSIONING.getOriginalStringCode(), "");
 		Response response = performRestGet(bucketName, null, requestParams, null);
 
@@ -134,7 +133,7 @@ public class ObsService extends RestStorageService {
 	}
 
 	TransResult transListVersionsRequest(ListVersionsRequest request) {
-		Map<String, String> params = new HashMap<String, String>();
+		Map<String, String> params = new HashMap<>();
 		params.put(SpecialParamEnum.VERSIONS.getOriginalStringCode(), "");
 		if (request.getPrefix() != null) {
 			params.put(ObsRequestParams.PREFIX, request.getPrefix());
@@ -2903,169 +2902,6 @@ public class ObsService extends RestStorageService {
                 listener.progressChanged(progressStatus);
             }
         }
-	}
-	
-	protected HeaderResponse setExtensionPolicyImpl(String bucketName, String policyDocument)
-			throws ServiceException {
-		Map<String, String> requestParameters = new HashMap<String, String>();
-		requestParameters.put(RequestParamEnum.EXTENSION_POLICY.getOriginalStringCode(), "");
-
-		Map<String, String> metadata = new HashMap<String, String>();
-		metadata.put(CommonHeaders.CONTENT_TYPE, Mimetypes.MIMETYPE_JSON);
-		metadata.put((this.getProviderCredentials().getAuthType() != AuthTypeEnum.OBS ? Constants.V2_HEADER_PREFIX : Constants.OBS_HEADER_PREFIX)
-				+ Constants.OEF_MARKER, Constants.YES);
-		
-		Response response = performRestPut(bucketName, null, metadata, requestParameters,
-				this.createRequestBody(Mimetypes.MIMETYPE_JSON, policyDocument), false, true);
-		HeaderResponse ret = build(this.cleanResponseHeaders(response));
-		setStatusCode(ret, response.code());
-		return ret;
-	}
-
-	protected QueryExtensionPolicyResult queryExtensionPolicyImpl(String bucketName) throws ServiceException{
-		Map<String, String> requestParams = new HashMap<String, String>();
-		requestParams.put(RequestParamEnum.EXTENSION_POLICY.getOriginalStringCode(), "");
-		
-		Map<String, String> metadata = new HashMap<String, String>();
-		metadata.put((this.getProviderCredentials().getAuthType() != AuthTypeEnum.OBS ? Constants.V2_HEADER_PREFIX : Constants.OBS_HEADER_PREFIX)
-				+ Constants.OEF_MARKER, Constants.YES);
-		
-		Response response = performRestGet(bucketName, null, requestParams, metadata, true);
-		
-		this.verifyResponseContentTypeForJson(response);
-		
-		String body;
-		try {
-			body = response.body().string();
-		} catch (IOException e) {
-			throw new ServiceException(e);
-		}
-		
-		QueryExtensionPolicyResult ret = (QueryExtensionPolicyResult) JSONChange.jsonToObj(new QueryExtensionPolicyResult(), body);
-		ret.setResponseHeaders(this.cleanResponseHeaders(response));
-		setStatusCode(ret, response.code());
-		return ret;
-	}
-	
-	protected HeaderResponse deleteExtensionPolicyImpl(String bucketName) throws ServiceException {
-		Map<String, String> requestParams = new HashMap<String, String>();
-		requestParams.put(RequestParamEnum.EXTENSION_POLICY.getOriginalStringCode(), "");
-		
-		Map<String, String> metadata = new HashMap<String, String>();
-		metadata.put((this.getProviderCredentials().getAuthType() != AuthTypeEnum.OBS ? Constants.V2_HEADER_PREFIX : Constants.OBS_HEADER_PREFIX)
-				+ Constants.OEF_MARKER, Constants.YES);
-		
-		Response response = performRestDelete(bucketName, null, requestParams, metadata, true);
-		return this.build(response);
-	}
-	
-	protected CreateAsynchFetchJobsResult createFetchJobImpl(String bucketName, String policyDocument) throws ServiceException{
-		Map<String, String> requestParameters = new HashMap<String, String>();
-		requestParameters.put(RequestParamEnum.ASYNC_FETCH_JOBS.getOriginalStringCode(), "");
-
-		Map<String, String> metadata = new HashMap<String, String>();
-		metadata.put(CommonHeaders.CONTENT_TYPE, Mimetypes.MIMETYPE_JSON);
-		metadata.put((this.getProviderCredentials().getAuthType() != AuthTypeEnum.OBS ? Constants.V2_HEADER_PREFIX : Constants.OBS_HEADER_PREFIX)
-				+ Constants.OEF_MARKER, Constants.YES);
-		
-		Response response = performRestPost(bucketName, null, metadata, requestParameters,
-				this.createRequestBody(Mimetypes.MIMETYPE_JSON, policyDocument), false, true);
-		
-		this.verifyResponseContentTypeForJson(response);
-		
-		String body;
-		try {
-			body = response.body().string();
-		} catch (IOException e) {
-			throw new ServiceException(e);
-		}
-		
-		CreateAsynchFetchJobsResult ret = (CreateAsynchFetchJobsResult) JSONChange.jsonToObj(new CreateAsynchFetchJobsResult(), body);
-		ret.setResponseHeaders(this.cleanResponseHeaders(response));
-		setStatusCode(ret, response.code());
-		return ret;
-	}
-	
-	protected QueryAsynchFetchJobsResult queryFetchJobImpl(String bucketName, String jobId) throws ServiceException{
-		Map<String, String> requestParams = new HashMap<String, String>();
-		requestParams.put(RequestParamEnum.ASYNC_FETCH_JOBS.getOriginalStringCode() + "/" +jobId, "");
-		
-		Map<String, String> metadata = new HashMap<String, String>();
-		metadata.put(CommonHeaders.CONTENT_TYPE, Mimetypes.MIMETYPE_JSON);
-		metadata.put((this.getProviderCredentials().getAuthType() != AuthTypeEnum.OBS ? Constants.V2_HEADER_PREFIX : Constants.OBS_HEADER_PREFIX)
-				+ Constants.OEF_MARKER, Constants.YES);
-		
-		Response response = performRestGet(bucketName, null, requestParams, metadata, true);
-		
-		this.verifyResponseContentTypeForJson(response);
-		
-		String body;
-		try {
-			body = response.body().string();
-		} catch (IOException e) {
-			throw new ServiceException(e);
-		}
-		
-		QueryAsynchFetchJobsResult ret = (QueryAsynchFetchJobsResult) JSONChange.jsonToObj(new QueryAsynchFetchJobsResult(), body);
-		ret.setResponseHeaders(this.cleanResponseHeaders(response));
-		setStatusCode(ret, response.code());
-		
-		return ret;
-	}
-	
-	protected HeaderResponse putDisPolicyImpl(String bucketName, String policyDocument)
-			throws ServiceException {
-		Map<String, String> requestParameters = new HashMap<String, String>();
-		requestParameters.put(RequestParamEnum.DIS_POLICIES.getOriginalStringCode(), "");
-
-		Map<String, String> metadata = new HashMap<String, String>();
-		metadata.put(CommonHeaders.CONTENT_TYPE, Mimetypes.MIMETYPE_JSON);
-		metadata.put((this.getProviderCredentials().getAuthType() != AuthTypeEnum.OBS ? Constants.V2_HEADER_PREFIX : Constants.OBS_HEADER_PREFIX)
-				+ Constants.OEF_MARKER, Constants.YES);
-		
-		Response response = performRestPut(bucketName, null, metadata, requestParameters,
-				this.createRequestBody(Mimetypes.MIMETYPE_JSON, policyDocument), false, true);
-		HeaderResponse ret = build(this.cleanResponseHeaders(response));
-		setStatusCode(ret, response.code());
-		return ret;
-	}
-	
-	protected GetDisPolicyResult getDisPolicyImpl(String bucketName) throws ServiceException{
-		Map<String, String> requestParams = new HashMap<String, String>();
-		requestParams.put(RequestParamEnum.DIS_POLICIES.getOriginalStringCode(), "");
-		
-		Map<String, String> metadata = new HashMap<String, String>();
-		metadata.put((this.getProviderCredentials().getAuthType() != AuthTypeEnum.OBS ? Constants.V2_HEADER_PREFIX : Constants.OBS_HEADER_PREFIX)
-				+ Constants.OEF_MARKER, Constants.YES);
-		
-		Response response = performRestGet(bucketName, null, requestParams, metadata, true);
-		
-		this.verifyResponseContentTypeForJson(response);
-		
-		String body;
-		try {
-			body = response.body().string();
-		} catch (IOException e) {
-			throw new ServiceException(e);
-		}
-		
-		DisPolicy policy = (DisPolicy) JSONChange.jsonToObj(new DisPolicy(), body);
-		GetDisPolicyResult ret = new GetDisPolicyResult(policy);
-		ret.setResponseHeaders(this.cleanResponseHeaders(response));
-		setStatusCode(ret, response.code());
-		return ret;
-	}
-	
-	protected HeaderResponse deleteDisPolicyImpl(String bucketName) throws ServiceException {
-		Map<String, String> requestParams = new HashMap<String, String>();
-		requestParams.put(RequestParamEnum.DIS_POLICIES.getOriginalStringCode(), "");
-		
-		Map<String, String> metadata = new HashMap<String, String>();
-		metadata.put((this.getProviderCredentials().getAuthType() != AuthTypeEnum.OBS ? Constants.V2_HEADER_PREFIX : Constants.OBS_HEADER_PREFIX)
-				+ Constants.OEF_MARKER, Constants.YES);
-		
-		Response response = performRestDelete(bucketName, null, requestParams, metadata, true);
-		return this.build(response);
 	}
 	
 	protected void verifyResponseContentTypeForJson(Response response) throws ServiceException {

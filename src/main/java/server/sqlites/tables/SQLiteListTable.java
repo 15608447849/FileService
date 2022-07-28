@@ -31,14 +31,16 @@ public class SQLiteListTable {
     }
 
     // 加入队列
-    public static boolean addListValue(String listType,String value,String identification){
+    public static boolean addListValue(String listType,String value,String attach){
         if (StringUtil.isEmpty(listType,value)){
             return false;
         }
-        if (identification == null) identification="";
+        if (attach == null) attach="";
         // 直接插入
         final String SQL_INSERT = String.format("REPLACE INTO %s (%s,%s,%s,%s) VALUES (?,?,?,?);",LIST_TABLE,LIST_LOCAL_TABLE_TYPE,LIST_LOCAL_TABLE_VALUE, LIST_LOCAL_TABLE_ATTACH, LIST_LOCAL_TABLE_CREATE);
-        int res = executeWriteSQL(SQL_INSERT,listType,value,identification,TimeTool.date_yMd_Hms_2Str(new Date()));
+        int res = executeWriteSQL(SQL_INSERT,listType,value,attach,TimeTool.date_yMd_Hms_2Str(new Date()));
+//        System.out.println("[" +listType+ "] 添加列表记录 "+ value );
+
         return res>0;
     }
 
@@ -63,6 +65,20 @@ public class SQLiteListTable {
         return list;
     }
 
+    public static int listCount(String listType){
+        try {
+
+            final String SQL_SELECT = String.format("SELECT COUNT(0) FROM %s WHERE %s=? ORDER BY %s ;",LIST_TABLE,LIST_LOCAL_TABLE_TYPE, LIST_LOCAL_TABLE_CREATE);
+            List<Object[]> lines = executeQuerySQL(SQL_SELECT,listType);
+            if (lines.size() > 0){
+                return Integer.parseInt(String.valueOf(lines.get(0)[0]));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
     //根据标识查询是否存在
     public static boolean existIdentity(String listType,String identification){
         final String SQL_SELECT = String.format("SELECT * FROM %s WHERE %s=? AND %s=? LIMIT 1;",LIST_TABLE,LIST_LOCAL_TABLE_TYPE, LIST_LOCAL_TABLE_ATTACH);
@@ -73,13 +89,13 @@ public class SQLiteListTable {
     public static final class ListStorageItem {
         public final String type;
         public final String value;
-        public final String identity;
+        public final String attach;
         public final String time;
 
         private ListStorageItem(Object[] rows) {
             this.type = String.valueOf(rows[0]);
             this.value =  String.valueOf(rows[1]);
-            this.identity =  String.valueOf(rows[2]);
+            this.attach =  String.valueOf(rows[2]);
             this.time =  String.valueOf(rows[3]);
         }
     }

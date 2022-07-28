@@ -3,13 +3,11 @@ package server.hwobs;
 import bottle.properties.abs.ApplicationPropertiesBase;
 import bottle.properties.annotations.PropertiesFilePath;
 import bottle.properties.annotations.PropertiesName;
-import bottle.util.EncryptUtil;
-import bottle.util.Log4j;
-import bottle.util.TimeTool;
+import bottle.util.*;
 import com.obs.services.ObsClient;
 import com.obs.services.exception.ObsException;
 import com.obs.services.model.*;
-import server.sqlites.tables.SQLiteFileTable;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -27,9 +25,8 @@ public class HWOBSServer {
     private static final String MAIN_URL_FORMAT = "obs.%s.myhuaweicloud.com";
     private static final String MAIN_URL_RESOURCE_PREV = "https://%s.obs.%s.myhuaweicloud.com";
 
-
     @PropertiesName("hwobs.enable")
-    public static boolean enable = false;
+    protected static boolean isEnable = false;
 
     @PropertiesName("hwobs.userName")
     public static String userName;
@@ -55,7 +52,7 @@ public class HWOBSServer {
 
     static {
         ApplicationPropertiesBase.initStaticFields(HWOBSServer.class);
-        if (enable) {
+        if (isEnable) {
             String endpoint = String.format(MAIN_URL_FORMAT,areaEndpointPrev);
             Log4j.info(String.format("[OBS]连接: %s , %s , %s , %s",accessKeyId,secretAccessKey,MAIN_URL,endpoint));
             obsClient_bucket = new ObsClient(accessKeyId,secretAccessKey,MAIN_URL);
@@ -145,25 +142,27 @@ public class HWOBSServer {
 
 
     /* 指定目录查询文件列表, isErgodicSubCatalog = 是否查询子目录 */
-    public static Set<String> ergodicDirectory(String dirPath, boolean isErgodicSubCatalog){
-        Log4j.info("[OBS] 遍历指定文件夹: "+ dirPath+" 是否遍历子目录: "+ isErgodicSubCatalog);
-        dirPath = dirPath.replace("\\","/");
+    static Set<String> ergodicDirectory(String dirPath, boolean isErgodicSubCatalog){
+//        Log4j.info("[OBS] 遍历指定文件夹: "+ dirPath+" 是否遍历子目录: "+ isErgodicSubCatalog);
 
+        dirPath = dirPath.replace("\\", FileTool.SEPARATOR);
         Set<String> list = new HashSet<>();
         try {
-            ListObjectsRequest request = new ListObjectsRequest(bucketName);
-            request.setDelimiter("/");//设置文件分隔符
-            if (dirPath.startsWith("/")){
-                if (dirPath.length()>1){
-                    dirPath = dirPath.substring(1);
-                    if (!dirPath.endsWith("/")){
-                        dirPath+="/";
+            if (isEnable) {
+                ListObjectsRequest request = new ListObjectsRequest(bucketName);
+                request.setDelimiter("/");//设置文件分隔符
+                if (dirPath.startsWith("/")) {
+                    if (dirPath.length() > 1) {
+                        dirPath = dirPath.substring(1);
+                        if (!dirPath.endsWith("/")) {
+                            dirPath += "/";
+                        }
                     }
                 }
+                listObjectsByPrefix(dirPath, request, list, isErgodicSubCatalog, null);
             }
-            listObjectsByPrefix(dirPath,request,list,isErgodicSubCatalog,null);
         } catch (ObsException e) {
-            //recodeException("[OBS]列举 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+            recodeException("[OBS]列举 ("+dirPath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
             list.clear();
         }
         return list;
@@ -223,9 +222,8 @@ public class HWOBSServer {
 
     //文件存在则返回MD5
     static String getFileMD5(String remotePath){
-        Log4j.info("[OBS] 查询指定文件MD5: "+ remotePath);
-
-        remotePath = remotePath.replace("\\","/");
+//        Log4j.info("[OBS] 查询指定文件MD5: "+ remotePath);
+        remotePath = remotePath.replace("\\",FileTool.SEPARATOR);
 
         if (remotePath.startsWith("/")){
             if (remotePath.length()>1){
@@ -235,21 +233,26 @@ public class HWOBSServer {
                 }
             }
         }
+
         try {
-            ObjectMetadata metadata = obsClient_info.getObjectMetadata(bucketName,remotePath );
-            Object md5 = metadata.getUserMetadata("md5");
-            return md5 == null? null: String.valueOf(md5);
+            if (isEnable) {
+                ObjectMetadata metadata = obsClient_info.getObjectMetadata(bucketName,remotePath );
+                Object md5 = metadata.getUserMetadata("md5");
+                return md5 == null? null: String.valueOf(md5);
+            }
+
         } catch (ObsException e) {
             //recodeException("[OBS]获取文件MD5失败 ("+remotePath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+        }catch (Exception ee){
+            Log4j.info("[OBS] 查询指定文件MD5 "+ remotePath+"  错误 "+ ee);
         }
         return null;
     }
 
     // 查询指定文件路径
-    public static boolean existFile(String remotePath){
-
-        Log4j.info("[OBS] 查询指定文件是否存在: "+ remotePath);
-        remotePath = remotePath.replace("\\","/");
+    static boolean existFile(String remotePath){
+//        Log4j.info("[OBS] 查询指定文件是否存在: "+ remotePath);
+        remotePath = remotePath.replace("\\",FileTool.SEPARATOR);
 
         if (remotePath.startsWith("/")){
             if (remotePath.length()>1){
@@ -261,55 +264,63 @@ public class HWOBSServer {
         }
 
         try {
-            ObjectMetadata metadata = obsClient_info.getObjectMetadata(bucketName, remotePath);
-            Log4j.info("[OBS] 查询指定文件是否存在: "+ remotePath+" MD5: "+ metadata.getContentMd5());
-            return true;
+            if (isEnable) {
+                ObjectMetadata metadata = obsClient_info.getObjectMetadata(bucketName, remotePath);
+                return true;
+            }
         } catch (ObsException e) {
             //recodeException("[OBS]列举 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+        }catch (Exception ee){
+            Log4j.info("[OBS] 查询指定文件是否存在 "+ remotePath+"  错误 "+ ee);
         }
         return false;
     }
 
 
     //文件删除
-    public static boolean deleteFile(List<String> fileList){
-
+    static void deleteFileList(List<String> fileList){
         for (String path: fileList){
-                if (path==null || path.length()==0) continue;
-                path = path.replace("\\","/");
-                if (path.startsWith("/")){
-                    if (path.length()>1){
-                        path = path.substring(1);
-                    }else{
-                        path = "";
-                    }
-                }
+           if (path==null || path.length()==0) continue;
+            deleteFile(path);
+        }
 
-            try{
-                DeleteObjectResult deleteResult = obsClient_info.deleteObject(bucketName, path);
-                Log4j.info("[OBS]删除文件: "+ path + " --> "+ deleteResult.isDeleteMarker()+" , "+ deleteResult.getObjectKey());
-            }catch (ObsException e){
-                recodeException("[OBS]删除文件("+path+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+    }
+
+    static boolean deleteFile(String path){
+        path = path.replace("\\",FileTool.SEPARATOR);
+        if (path.startsWith("/")){
+            if (path.length()>1){
+                path = path.substring(1);
+            }else{
+                path = "";
             }
         }
-        return true;
+        try{
+            if (isEnable) {
+                DeleteObjectResult deleteResult = obsClient_info.deleteObject(bucketName, path);
+                Log4j.info("[OBS]删除文件: "+ path + " --> "+ deleteResult.isDeleteMarker()+" , "+ deleteResult.getObjectKey());
+                return deleteResult.isDeleteMarker();
+            }
+        }catch (ObsException e){
+            recodeException("[OBS]删除文件("+path+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+        }
+        return false;
     }
 
 
-
     //文件上传
-    public static boolean uploadLocalFile(String localPath, String remotePath){
-
+    static boolean uploadLocalFile(String localPath, String remotePath,String localFileMD5){
         try {
-            File file = new File(localPath);
+            if (!isEnable) return false;
 
-            if (!file.exists() || file.length() > 5 * 1024 * 1024 * 1024L) {
-                return true;
+            if (StringUtil.isEmpty(localPath,remotePath,localFileMD5)) return false;
+
+            File file = new File(localPath);
+            if (!file.exists() || file.length()<=0 || file.length() >= 5 * 1024 * 1024 * 1024L) {
+                return false;
             }
 
-            remotePath =   remotePath.replace("\\","/");
-
-            String relativePath = remotePath;
+            remotePath =   remotePath.replace("\\",FileTool.SEPARATOR);
 
             if (remotePath.startsWith("/")){
                 if (remotePath.length()>1){
@@ -317,49 +328,43 @@ public class HWOBSServer {
                 }
             }
 
-            String md5;
-            try {
-                md5 = EncryptUtil.getFileMd5ByString(new File(localPath));
-            } catch (Exception e) {
-                Log4j.info("[OBS]上传文件 无法产生MD5 , file: "+ localPath);
-                return false;
-            }
-
             UploadFileRequest  request = new UploadFileRequest(bucketName, remotePath);
             request.setAcl(AccessControlList.REST_CANNED_PUBLIC_READ);
             request.setUploadFile(localPath);
 
-            request.setTaskNum(8);
-            request.setPartSize( file.length() / 8);
+            request.setTaskNum(4);
+            request.setPartSize( file.length() / 4);
             request.setEnableCheckpoint(true);
 
-            request.setProgressInterval(10 * 1024 * 1024L);
+            request.setProgressInterval(1024 * 1024L);
+
+            long time = System.currentTimeMillis();
 
             request.setProgressListener(status -> {
 
-                Log4j.info("[OBS]上传文件("+localPath+")"
+                Log4j.debug("[OBS]上传文件("+localPath+")"
                         + " ,上传进度百分比:" + status.getTransferPercentage()
-                        + " ,上传平均速率 :" + getNetFileSizeDescription((long)(Math.ceil(status.getAverageSpeed()))));
+                        + " ,上传平均速率: " + getNetFileSizeDescription((long)(Math.ceil(status.getAverageSpeed())))
+                        + " ,已用时长: " +  TimeTool.formatDuring(System.currentTimeMillis() - time)
+                );
             });
 
-            long time = System.currentTimeMillis();
-            CompleteMultipartUploadResult response = obsClient_upload.uploadFile(request);
-
-            Log4j.info(
-                    "[OBS]上传文件("+localPath+") 耗时:" + TimeTool.formatDuring(System.currentTimeMillis() - time)
-                            +"\n\t访问路径: "+ response.getObjectUrl()
-            );
+            try {
+                CompleteMultipartUploadResult response = obsClient_upload.uploadFile(request);
+                Log4j.info("[OBS]上传成功 用时: "+ TimeTool.formatDuring(System.currentTimeMillis() - time)+"\n"+ response);
+            } catch (ObsException e) {
+                recodeException("[OBS]上传文件("+remotePath+") 失败 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误", e);
+                return false;
+            }
 
             try {
                 SetObjectMetadataRequest requestMeta = new SetObjectMetadataRequest(bucketName, remotePath);
-                requestMeta.getMetadata().put("md5", md5 );
+                requestMeta.getMetadata().put("md5", localFileMD5 );
                 ObjectMetadata metadata = obsClient_upload.setObjectMetadata(requestMeta);
-                Log4j.info("[OBS]上传成功 "+ remotePath);
-
-                SQLiteFileTable.addFile_HWOBS(relativePath,  convertLocalFileToCDNUrl(relativePath));
             } catch (ObsException e) {
                 recodeException("[OBS]上传文件("+remotePath+") 设置MD5失败 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误", e);
             }
+
             return true;
         }catch (ObsException e){
             recodeException("[OBS]上传文件("+localPath+" -> "+remotePath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
@@ -379,7 +384,7 @@ public class HWOBSServer {
     }
 
     //结束客户端
-    public static void stop(){
+    static void stop(){
         try {
             obsClient_bucket.close();
         } catch (IOException e) {

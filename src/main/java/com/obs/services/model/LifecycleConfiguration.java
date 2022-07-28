@@ -639,7 +639,7 @@ public class LifecycleConfiguration extends HeaderResponse
         }
         
         /**
-         * Specify whether to enable the rule.
+         * Specify whether to isEnable the rule.
          * @param enabled Identifier that specifies whether the rule is enabled 
          */
         public void setEnabled(Boolean enabled)

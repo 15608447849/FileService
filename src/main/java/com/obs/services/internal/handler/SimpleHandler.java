@@ -67,9 +67,9 @@ public abstract class SimpleHandler extends DefaultHandler{
 	@Override
 	public void startElement(String uri, String name, String qName, Attributes attrs) {
 		try {
-			Method method = currentHandler.getClass().getMethod("start" + name, new Class[] {});
-			method.invoke(currentHandler, new Object[] {});
-		} catch (Exception e) {
+			Method method = currentHandler.getClass().getMethod("start" + name);
+			method.invoke(currentHandler);
+		} catch (Exception ignored) {
 
 		}
 	}
@@ -78,16 +78,16 @@ public abstract class SimpleHandler extends DefaultHandler{
 	public void endElement(String uri, String name, String qName) {
 		String elementText = this.textContent.toString().trim();
 		try {
-			Method method = currentHandler.getClass().getMethod("end" + name, new Class[] { String.class });
-			method.invoke(currentHandler, new Object[] { elementText });
-		} catch (Exception e) {
+			Method method = currentHandler.getClass().getMethod("end" + name, String.class);
+			method.invoke(currentHandler, elementText);
+		} catch (Exception ignored) {
 
 		}
 		this.textContent = new StringBuffer();
 	}
 
 	@Override
-	public void characters(char ch[], int start, int length) {
+	public void characters(char[] ch, int start, int length) {
 		this.textContent.append(ch, start, length);
 	}
 

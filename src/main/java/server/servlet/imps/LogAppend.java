@@ -18,7 +18,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 // 任意日志记录生成文件
 
-@ServletAnnotation(name = "日志记录",path = "/logAppend")
+//@ServletAnnotation(name = "日志记录",path = "/logAppend")
 public class LogAppend extends CustomServlet {
     private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd");
     private static final LinkedBlockingQueue<String[]> queue = new LinkedBlockingQueue<>();

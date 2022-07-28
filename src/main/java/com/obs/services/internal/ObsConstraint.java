@@ -108,7 +108,7 @@ public class ObsConstraint
     
     
     // HTTP代理配置
-    public static final String PROXY_ISABLE = "httpclient.proxy-enable";
+    public static final String PROXY_ISABLE = "httpclient.proxy-isEnable";
     
     public static final String PROXY_HOST = "httpclient.proxy-host";
     

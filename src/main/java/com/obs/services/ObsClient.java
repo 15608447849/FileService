@@ -43,8 +43,6 @@ import java.util.concurrent.*;
  */
 public class ObsClient extends ObsService implements Closeable, IObsClient, IFSClient {
 
-
-
     private void init(String accessKey, String secretKey, String securityToken, ObsConfiguration config) {
 
         ProviderCredentials credentials = new ProviderCredentials(accessKey, secretKey, securityToken);

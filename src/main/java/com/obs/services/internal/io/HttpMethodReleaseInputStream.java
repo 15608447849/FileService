@@ -36,6 +36,7 @@ public class HttpMethodReleaseInputStream extends InputStream implements InputSt
     public HttpMethodReleaseInputStream(Response response) {
         this.httpResponse = response;
         try {
+            assert response.body() != null;
             this.inputStream = new InterruptableInputStream(response.body().byteStream());
         } catch (Exception e) {
             try {

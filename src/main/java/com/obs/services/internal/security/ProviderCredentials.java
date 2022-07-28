@@ -74,12 +74,7 @@ public class ProviderCredentials {
 
     public void initThreadLocalAuthType() {
         if (threadLocalAuthType == null) {
-            threadLocalAuthType = new ThreadLocal<AuthTypeEnum>() {
-                @Override
-                protected AuthTypeEnum initialValue() {
-                    return ProviderCredentials.this.authType;
-                }
-            };
+            threadLocalAuthType = ThreadLocal.withInitial(() -> ProviderCredentials.this.authType);
         }
     }
 }

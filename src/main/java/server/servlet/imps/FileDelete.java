@@ -2,7 +2,7 @@ package server.servlet.imps;
 
 import bottle.util.FileTool;
 import bottle.util.Log4j;
-import server.hwobs.HWOBSServer;
+import server.hwobs.HWOBSAgent;
 import server.undertow.ServletAnnotation;
 import server.undertow.WebServer;
 import server.undertow.ServletResult;
@@ -32,8 +32,12 @@ public class FileDelete extends CustomServlet {
 
         if (list!=null){
             list.removeIf(val -> val == null || val.length() == 0 || val.equals("null"));
-            list.forEach(path -> FileTool.deleteFileOrDir(  WebServer.rootFolderStr + path));
-            HWOBSServer.deleteFile(list);
+
+            for (String path : list) {
+                FileTool.deleteFileOrDir(  WebServer.rootFolderStr + path);
+                HWOBSAgent.deleteRemoteFile(path);
+            }
+
         }
         writeJson(resp,new ServletResult().value(SUCCESS));
     }

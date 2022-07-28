@@ -1,16 +1,10 @@
 package server;
 
 
-import bottle.properties.annotations.PropertiesFilePath;
-import bottle.properties.annotations.PropertiesName;
-import bottle.util.Log4j;
 import server.clear.FileClear;
-import server.hwobs.HWOBSUpload;
+import server.hwobs.HWOBSAgent;
 import server.servlet.beans.ImageOperation;
-import server.servlet.imps.FileUpLoad;
 import server.undertow.WebServer;
-
-import java.io.File;
 
 
 /**
@@ -20,22 +14,27 @@ import java.io.File;
 
 public class LunchServer {
 
+
+
     public static void main(String[] args) throws Exception {
+
+
+        if (args!=null){
+            for (int i = 0 ; i<args.length;i+=2){
+                if (args[i].startsWith("--web.port")){
+                    WebServer.initWebServer( Integer.parseInt(args[i+1]));
+                }
+            }
+        }
 
         //文件清理线程
         FileClear.start();
         //图片处理
         ImageOperation.start();
         //华为OBS
-        HWOBSUpload.start();
+        HWOBSAgent.start();
         //开启web文件服务器
         WebServer.startWebServer();
-
-        if (args.length>=1){
-            if (args[0].equals("--scan.file.upload.obs")){
-                HWOBSUpload.localErgodic();
-            }
-        }
     }
 }
 

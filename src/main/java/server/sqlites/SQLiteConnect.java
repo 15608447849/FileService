@@ -74,7 +74,7 @@ class SQLiteConnect{
             connect = new SQLiteConnect();
             mConnectPools.add(connect);
             local.set(connect);
-            Log4j.info(" 创建数据库连接, 当前总连接数: " + mConnectPools.size());
+            //Log4j.info(" 创建数据库连接, 当前总连接数: " + mConnectPools.size());
         }
         connect.state = USED;
         return connect;

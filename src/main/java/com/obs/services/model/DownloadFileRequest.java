@@ -113,7 +113,7 @@ public class DownloadFileRequest {
      * @param downloadFile Path to the to-be-downloaded file
      * @param partSize Part size
      * @param taskNum Maximum number of threads used for processing download tasks concurrently
-     * @param enableCheckpoint Whether to enable the resumable mode
+     * @param enableCheckpoint Whether to isEnable the resumable mode
      * 
 	 */
 	public DownloadFileRequest(String bucketName, String objectKey, String downloadFile, long partSize, int taskNum,
@@ -129,7 +129,7 @@ public class DownloadFileRequest {
      * @param downloadFile Path to the to-be-downloaded file
      * @param partSize Part size
      * @param taskNum Maximum number of threads used for processing download tasks concurrently
-     * @param enableCheckpoint Whether to enable the resumable mode
+     * @param enableCheckpoint Whether to isEnable the resumable mode
 	 * @param checkpointFile File used to record download progresses in resumable mode
 	 * 
 	 */
@@ -151,7 +151,7 @@ public class DownloadFileRequest {
      * @param downloadFile Path to the to-be-downloaded file
      * @param partSize Part size
      * @param taskNum Maximum number of threads used for processing download tasks concurrently
-     * @param enableCheckpoint Whether to enable the resumable mode
+     * @param enableCheckpoint Whether to isEnable the resumable mode
      * @param checkpointFile File used to record download progresses in resumable mode
      * @param versionId Version ID of the object
      * 
@@ -273,7 +273,7 @@ public class DownloadFileRequest {
     }
 
     /**
-     * Specify whether to enable the resumable mode.
+     * Specify whether to isEnable the resumable mode.
      * 
      * @param enableCheckpoint Identifier specifying whether the resumable mode is enabled
      */

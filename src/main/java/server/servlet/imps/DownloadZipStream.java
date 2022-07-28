@@ -26,7 +26,7 @@ import java.util.zip.ZipOutputStream;
  * POST >  http://127.0.0.1:8080/downloadZip  header = { "path-list" :  "/defaults/1/ERP.vsdx; /defaults/2.png"  , "zip-name":"可以没有,默认时间戳命名"}
  * 暂未使用
  */
-@ServletAnnotation(name = "指定文件列表下载ZIP数据流",path = "/downloadZip")
+//@ServletAnnotation(name = "指定文件列表下载ZIP数据流",path = "/downloadZip")
 public class DownloadZipStream extends CustomServlet {
 
     @Override

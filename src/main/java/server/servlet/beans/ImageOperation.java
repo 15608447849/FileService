@@ -6,7 +6,9 @@ import bottle.properties.annotations.PropertiesName;
 import bottle.util.FileTool;
 import bottle.util.GoogleGsonUtil;
 import bottle.util.Log4j;
-import server.hwobs.HWOBSUpload;
+import server.hwobs.HWOBSAgent;
+import server.sqlites.tables.SQLiteFileTable;
+import server.undertow.WebServer;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static server.comm.OperationUtil.*;
+import static server.comm.SuffixConst.IMG_SUFFIX_ARRAY;
 import static server.sqlites.tables.SQLiteListTable.*;
 
 /**
@@ -25,7 +28,6 @@ import static server.sqlites.tables.SQLiteListTable.*;
 
 @PropertiesFilePath("/web.properties")
 public class ImageOperation{
-
 
     @PropertiesName("image.logo.text.position")
     public static int logoTextPosition = 0;
@@ -56,12 +58,12 @@ public class ImageOperation{
     private static final LinkedBlockingQueue<String[]> queue = new LinkedBlockingQueue<>();
 
     public static void add(String imagePath, int[] maxImageLimit, boolean isCompress, long spSize, boolean isLogo, boolean minScaleExist, String tailorStr){
-        String json = GoogleGsonUtil.javaBeanToJson(new ImageOperation(imagePath,maxImageLimit,isCompress,spSize,isLogo,minScaleExist,tailorStr));
-        String[] args = new String[]{json,imagePath};
         try {
+            String json = GoogleGsonUtil.javaBeanToJson(new ImageOperation(imagePath,maxImageLimit,isCompress,spSize,isLogo,minScaleExist,tailorStr));
+            String[] args = new String[]{json,imagePath};
             queue.put(args);
         } catch (Exception e) {
-           Log4j.info("文件加入队列失败", Arrays.toString(args));
+           Log4j.error("文件加入图片处理队列异常 "+imagePath,e);
         }
     }
 
@@ -78,7 +80,7 @@ public class ImageOperation{
                         TYPE.notifyAll();
                     }
                 }
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -89,7 +91,7 @@ public class ImageOperation{
         while (true){
             try{
                 List<ListStorageItem> list = getListByType(TYPE,100);
-                if (list.size() != 0) {
+                if (list.size() > 0) {
                     executeHandler(list);
                 }else{
                     synchronized (TYPE){
@@ -105,13 +107,26 @@ public class ImageOperation{
     private static void executeHandler(List<ListStorageItem> list) {
 
         for (ListStorageItem it : list){
-            ImageOperation imageOperation = GoogleGsonUtil.jsonToJavaBean(it.value,ImageOperation.class);
+            ImageOperation imageOperation = GoogleGsonUtil.jsonToJavaBean(it.attach,ImageOperation.class);
             List<String> filePathAll = imageOperation.execute();
-            if (filePathAll!=null && filePathAll.size()>0){
-                HWOBSUpload.addFileToQueue(filePathAll);
-            }
             removeListValue(TYPE,it.value);
+            if (filePathAll!=null && filePathAll.size()>0){
+                addFileToSQLiteRecode(filePathAll);
+                HWOBSAgent.addFileToQueue(filePathAll);
+            }
+
         }
+    }
+
+    private static void addFileToSQLiteRecode(List<String> localFilePaths) {
+        if (localFilePaths == null) return;
+
+        for (String localPath : localFilePaths){
+            String relativePath = localPath.replace(WebServer.rootFolderStr,"");
+            String httpUrl = WebServer.domain + relativePath;
+            SQLiteFileTable.addFile_LOCAL(relativePath,httpUrl);
+        }
+
     }
 
     //源图片路径
@@ -137,6 +152,14 @@ public class ImageOperation{
         this.isLogo = isLogo;
         this.minScaleExist = minScaleExist;
         this.tailorStr = tailorStr;
+        Log4j.info("图片("+imagePath+")处理参数: " +
+                " 最大限制:"+ Arrays.toString(maxImageLimit) +
+                " 是否压缩:"+ isCompress +
+                " 压缩阈值:"+ spSize +
+                " 添加LOGO:"+ isLogo +
+                " 缩略图:"+ minScaleExist +
+                " 裁剪比例:"+ tailorStr
+        );
     }
 
     private File image;
@@ -149,7 +172,7 @@ public class ImageOperation{
             if (image.exists()) {
                 filePathAll.add(imagePath);
                 // 检查是否是图片
-                if (isImageSuffix(image)) {
+                if (isImageType(image)) {
                     //1. 图片最大限制处理
                     maxImageLimitHandler();
                     //2. 是否添加水印
@@ -163,54 +186,74 @@ public class ImageOperation{
                 }
             }
         } catch (Exception e) {
-            Log4j.error("文件服务错误 处理图片: "+image,e);
+            Log4j.error("处理图片异常 "+image,e);
         }
         return filePathAll;
     }
 
     // 1 图片最大限制
     private void maxImageLimitHandler() {
-        if (maxImageLimit!=null && maxImageLimit[0] > 0 && maxImageLimit[1] > 0){
-            image = imageMaxSizeHandle(maxImageLimit,image);
+        try {
+            if (maxImageLimit!=null && maxImageLimit[0] > 0 && maxImageLimit[1] > 0){
+                image = imageMaxSizeHandle(maxImageLimit,image);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     //2 水印
     private void logoHandler() {
         if (isLogo){
-            //文本水印
-            image = markImageByText(logoText,image, logoTextRotate,parseToColor(logoTextColor), logoTextAlpha, logoTextPosition);
-            //图片水印
-            image = markImageByIcon(logoIcon,image, logoIconAlpha, logoIconRotate, logoIconPosition);
+            try {
+                //文本水印
+                image = markImageByText(logoText,image, logoTextRotate,parseToColor(logoTextColor), logoTextAlpha, logoTextPosition);
+                //图片水印
+                image = markImageByIcon(logoIcon,image, logoIconAlpha, logoIconRotate, logoIconPosition);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     //3 最小比例
     private void minScaleExistHandler() {
         if (minScaleExist) {
-            String image_min = filePathAndStrToSuffix(imagePath,"-min");
-            boolean isSuccess = imageCompress_scale_min(image,new File(image_min));
-            if (isSuccess) filePathAll.add(image_min);
+            try {
+                String image_min = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[0]);
+                boolean isSuccess = imageCompress_scale_min(image,new File(image_min));
+                if (isSuccess) filePathAll.add(image_min);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     //4 压缩
     private void imageCompressHandler() {
         if (isCompress) {
-            String image_ing = filePathAndStrToSuffix(imagePath,"-ing");
-            String image_org = filePathAndStrToSuffix(imagePath,"-org");
-            long time = System.currentTimeMillis();
-            File temp = new File(image_ing);// 压缩中的临时文件
-            boolean isSuccess = imageCompress(image,temp,spSize);
-            Log4j.info("图片("+ image + ")压缩"+  ( isSuccess ? "成功":"失败") +",耗时:" + (System.currentTimeMillis() - time )+" 毫秒");
-            if (isSuccess) {
-                //重命名
-                FileTool.rename(image,new File(image_org)) ; // 当前文件->添加-org
-                if (image.exists()) {
-                    if (!image.delete())  return;
-                };
-                FileTool.rename(temp,image) ; // 临时文件->当前文件
-                filePathAll.add(image_org);
+            try {
+                String image_ing = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[1]);
+                String image_org = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[2]);
+
+                File temp = new File(image_ing);// 压缩中的临时文件
+
+                long time = System.currentTimeMillis();
+                boolean isSuccess = imageCompress(image,temp,spSize);
+                Log4j.info("图片("+ image + ")压缩"+  ( isSuccess ? "成功":"失败") +",耗时:" + (System.currentTimeMillis() - time )+" 毫秒" +
+                        ",压缩变化: "+image.length()+" -> "+temp.length());
+
+                if (isSuccess) {
+                    //重命名
+                    FileTool.rename(image,new File(image_org)) ; // 当前文件->添加-org
+//                    if (image.exists()) {
+//                        if (!image.delete())  return;
+//                    }
+                    FileTool.rename(temp,image) ; // 临时文件->当前文件
+                    filePathAll.add(image_org);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }
@@ -218,6 +261,7 @@ public class ImageOperation{
     //5 指定大小裁剪
     private void tailorHandler() {
         if (tailorStr==null) return;
+        try {
             String[] tailorArr = tailorStr.split(",");
             for (String sizeStr : tailorArr) {
                 String image_tailor = filePathAndStrToSuffix(image.getAbsolutePath(),"-"+sizeStr);
@@ -230,6 +274,9 @@ public class ImageOperation{
                     filePathAll.add(image_tailor);
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
