@@ -7,9 +7,13 @@ import bottle.util.*;
 import com.obs.services.ObsClient;
 import com.obs.services.exception.ObsException;
 import com.obs.services.model.*;
+import server.comm.RuntimeUtil;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static server.comm.OperationUtil.getNetFileSizeDescription;
@@ -43,8 +47,18 @@ public class HWOBSServer {
     @PropertiesName("hwobs.bucket.name")
     public static String bucketName;
 
+    @PropertiesName("hwobs.upload.seg.threads")
+    public static int uploadSegThreads = 8;
+
+    @PropertiesName("hwobs.upload.seg.size")
+    public static long uploadSegSize = 100L * 1024L * 1024L;
+
+    @PropertiesName("hwobs.upload.recode.dir")
+    public static String uploadRecodeDir = System.getProperty("java.io.tmpdir") + "/hwobsup";
+
     @PropertiesName("hwobs.cdn")
     public static String cdnURL;
+
 
     private static ObsClient obsClient_bucket;
     private static ObsClient obsClient_info;
@@ -53,8 +67,16 @@ public class HWOBSServer {
     static {
         ApplicationPropertiesBase.initStaticFields(HWOBSServer.class);
         if (isEnable) {
+            File dir = new File(uploadRecodeDir);
+            if (!dir.exists()){
+                if (!dir.mkdirs()){
+                    uploadRecodeDir = null;
+                }
+            }
+            uploadRecodeDir = dir.getPath();
+
             String endpoint = String.format(MAIN_URL_FORMAT,areaEndpointPrev);
-            Log4j.info(String.format("[OBS]连接: %s , %s , %s , %s",accessKeyId,secretAccessKey,MAIN_URL,endpoint));
+            Log4j.info(String.format("[OBS]连接: %s , %s , %s , %s ,上传记录: %s",accessKeyId,secretAccessKey,MAIN_URL,endpoint,uploadRecodeDir));
             obsClient_bucket = new ObsClient(accessKeyId,secretAccessKey,MAIN_URL);
             obsClient_info = new ObsClient(accessKeyId,secretAccessKey,endpoint);
             obsClient_upload = new ObsClient(accessKeyId,secretAccessKey,endpoint);
@@ -308,7 +330,8 @@ public class HWOBSServer {
     }
 
 
-    //文件上传
+
+    //文件上传: 断点续传
     static boolean uploadLocalFile(String localPath, String remotePath,String localFileMD5){
         try {
             if (!isEnable) return false;
@@ -328,42 +351,54 @@ public class HWOBSServer {
                 }
             }
 
+            ObjectMetadata requestMeta = new ObjectMetadata();
+            requestMeta.setContentLength(file.length());
+            requestMeta.getMetadata().put("md5", localFileMD5 );
+
             UploadFileRequest  request = new UploadFileRequest(bucketName, remotePath);
+            request.setObjectMetadata(requestMeta);
             request.setAcl(AccessControlList.REST_CANNED_PUBLIC_READ);
             request.setUploadFile(localPath);
+            if (uploadRecodeDir!=null){
+                request.setCheckpointFile(uploadRecodeDir+"/"+localFileMD5+".uploadFile_record");
+            }
 
-            request.setTaskNum(4);
-            request.setPartSize( file.length() / 4);
-            request.setEnableCheckpoint(true);
+            request.setPartSize(uploadSegSize);//分段大小
 
-            request.setProgressInterval(1024 * 1024L);
+            int threads = Math.max(1,uploadSegThreads);
+            request.setTaskNum(threads);//分段上传时的最大并发数
+            if (threads>1){
+                request.setEnableCheckpoint(true);
+            }
+
+            request.setProgressInterval(1024L*1024L);// 上传进度反馈间隔 1M
 
             long time = System.currentTimeMillis();
 
             request.setProgressListener(status -> {
 
-                Log4j.debug("[OBS]上传文件("+localPath+")"
-                        + " ,上传进度百分比:" + status.getTransferPercentage()
-                        + " ,上传平均速率: " + getNetFileSizeDescription((long)(Math.ceil(status.getAverageSpeed())))
-                        + " ,已用时长: " +  TimeTool.formatDuring(System.currentTimeMillis() - time)
+                Log4j.info("[OBS]上传文件( "+localPath+" MD5: "+ localFileMD5 +" LEN: "+ getNetFileSizeDescription(file.length()) +" )"
+                        + " ,进度:" + status.getTransferPercentage()
+                        + " ,均速: " + getNetFileSizeDescription((long)(Math.ceil(status.getAverageSpeed())))
+                        + " ,用时: " +  TimeTool.formatDuring(System.currentTimeMillis() - time)
                 );
             });
 
             try {
                 CompleteMultipartUploadResult response = obsClient_upload.uploadFile(request);
-                Log4j.info("[OBS]上传成功 用时: "+ TimeTool.formatDuring(System.currentTimeMillis() - time)+"\n"+ response);
+                Log4j.info("[OBS]上传文件("+remotePath+") 成功 大小: "+ RuntimeUtil.byteLength2StringShow(file.length()) +" 用时: "+ TimeTool.formatDuring(System.currentTimeMillis() - time)+" MD5: "+ localFileMD5);
             } catch (ObsException e) {
                 recodeException("[OBS]上传文件("+remotePath+") 失败 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误", e);
                 return false;
             }
 
-            try {
+            /*try {
                 SetObjectMetadataRequest requestMeta = new SetObjectMetadataRequest(bucketName, remotePath);
                 requestMeta.getMetadata().put("md5", localFileMD5 );
                 ObjectMetadata metadata = obsClient_upload.setObjectMetadata(requestMeta);
             } catch (ObsException e) {
                 recodeException("[OBS]上传文件("+remotePath+") 设置MD5失败 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误", e);
-            }
+            }*/
 
             return true;
         }catch (ObsException e){
@@ -403,6 +438,15 @@ public class HWOBSServer {
     }
 
 
+
+
+
+    public static void main(String[] args) throws Exception{
+//        File f = new File("C:\\Users\\Administrator\\Desktop\\ERP\\14.jpg");
+//        uploadLocalFile(f.getPath(),"/lsp/0.jpg",EncryptUtil.getFileMd5ByString(f));
+        File f = new File("C:\\Users\\Administrator\\Downloads\\CLion-2022.2.win.zip");
+        uploadLocalFile(f.getPath(),"/lsp/CLion-2022.2.win.zip",EncryptUtil.getFileMd5ByString(f));
+    }
 
 
 

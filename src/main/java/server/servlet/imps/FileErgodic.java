@@ -27,7 +27,7 @@ import static server.comm.SuffixConst.*;
 @ServletAnnotation(name = "遍历文件列表",path = "/ergodic")
 public class FileErgodic extends CustomServlet {
 
-    private final static LRUCache<String, List<String>> cache = new LRUCache<>(10000,-1);
+    private final static LRUCache<String, List<String>> cache = new LRUCache<>(Integer.MAX_VALUE,-1);
 
     public static void removeCache(String path){
         int symIndex = path.lastIndexOf(".");
@@ -80,15 +80,12 @@ public class FileErgodic extends CustomServlet {
             File file = new File(localPath);
             isExist = file.exists() && file.isFile();
 //            Log4j.info("遍历 检查LOC文件: " + localPath +" file.exists() && file.isFile() = "+ isExist);
-
             if (!isExist){
                 // 判断obs对象
                 isExist = HWOBSAgent.existRemoteFile(remotePath);
 //                Log4j.info("遍历 检查OBS对象: " + remotePath +" isExist = "+ isExist);
             }
-
             Log4j.info("遍历 指定文件: " + remotePath +" 是否存在: " + isExist );
-
         } catch (Exception e) {
             Log4j.error("文件是否存在 "+ path,e);
         }
@@ -96,22 +93,20 @@ public class FileErgodic extends CustomServlet {
         return isExist;
     }
 
+
+    //检查目录 返回 子文件列表
     private List<String> ergodicFolder(String path, boolean isSub, String filterSuffix) {
-
-
-
 
         String remotePath = checkDirPath(path);
         String localPath = WebServer.rootFolderStr + remotePath;
-        int localFileSize = 0;
-        int remoteFileSize = 0;
 
-        //检查目录 返回 子文件列表
+        // 缓存获取
         List<String> respList = cache.get(remotePath);
         if(respList != null) return respList;
 
         respList = new ArrayList<>();
-
+        int localFileSize = 0;
+        int remoteFileSize = 0;
         try {
             // 遍历远程目录
             List<String> list_remote = HWOBSAgent.ergodicDirectory(remotePath,isSub,true);
@@ -139,9 +134,7 @@ public class FileErgodic extends CustomServlet {
             }
 
             if (respList.size()>0){
-                Log4j.info("遍历 "+ remotePath +" OBS 文件个数: " + remoteFileSize +
-                        " , LOC 文件个数: " + localFileSize +
-                        " , 返回文件列表: " + GoogleGsonUtil.javaBeanToJson(respList) );
+                Log4j.info("遍历 "+ remotePath + ", LOC: " + localFileSize +" OBS: " + remoteFileSize  + ", LIST: " + GoogleGsonUtil.javaBeanToJson(respList) );
                 cache.add(remotePath,respList);
             }
 

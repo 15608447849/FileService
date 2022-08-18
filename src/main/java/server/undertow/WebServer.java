@@ -112,7 +112,7 @@ public class WebServer {
 
                 // 连接访问参数配置
 
-                builder.setIoThreads(16);
+                builder.setIoThreads(64);
                 builder.setWorkerThreads(256);
 
 //                builder.setDirectBuffers(true);

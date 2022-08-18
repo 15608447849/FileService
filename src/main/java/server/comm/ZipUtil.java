@@ -1,6 +1,7 @@
 package server.comm;
 
 import bottle.util.FileTool;
+import bottle.util.Log4j;
 import server.hwobs.HWOBSAgent;
 import server.undertow.WebServer;
 
@@ -17,7 +18,6 @@ import java.util.List;
 
 public class ZipUtil {
 
-    private static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
 
     /* 添加文件到指定列表 */
     private static void addFile(List<File> list, File file) {
@@ -41,8 +41,8 @@ public class ZipUtil {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(60*1000);
-            String suffix = urlStr.substring(urlStr.lastIndexOf("."));
-            String fileName =  simpleDateFormat.format(new Date()) + suffix;
+
+            String fileName =  System.currentTimeMillis() + "-" +urlStr.substring(urlStr.lastIndexOf("/")+1);
 
             File localFile = new File(storageDir,fileName);
             try(InputStream in = conn.getInputStream()){
@@ -72,6 +72,7 @@ public class ZipUtil {
         List<File> list = new ArrayList<>();
 
         for (String path : paths){
+            Log4j.info("[ZIP] 目标路径 : "+ path);
             File file = null;
             // 远程url
             if(path.startsWith("http") || path.startsWith("https")){
@@ -84,6 +85,7 @@ public class ZipUtil {
                 file = new File(WebServer.rootFolder,  path);
 
                 if (!file.exists()){
+                    Log4j.info("[ZIP] 文件不存在 : "+ file);
                     // 尝试通过OBS获取
                     String remoteUrl = HWOBSAgent.getFileURL(path);
                     if (remoteUrl!=null){

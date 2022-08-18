@@ -90,9 +90,10 @@ public class GenerateZip extends CustomServlet {
 
             if (!dir.exists()) if (!dir.mkdirs()) throw new IllegalArgumentException("无法创建目录: "+ dirPath);//创建目录
 
+            int index =0;
             for (File file : fileList) {
                 //目标临时存放位置
-                File out = new File(dirPath, file.length()+"_"+file.getName());
+                File out = new File(dirPath, ++index +"-"+file.getName());
                 if (!out.exists()){
                     //复制文件
                     FileUtils.copyFile(file, out);

@@ -6,9 +6,7 @@ import bottle.properties.annotations.PropertiesFilePath;
 import bottle.properties.annotations.PropertiesName;
 import bottle.util.Log4j;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 @PropertiesFilePath("/web.properties")
 public class SuffixConst {
@@ -25,6 +23,10 @@ public class SuffixConst {
     @PropertiesName("sys.filter.suffix")
     private static String sysFilterSuffixArrayStr = "";
 
+    // 遍历文件过滤后缀
+    @PropertiesName("ergodic.filter.suffix")
+    private static String ergodicFilterSuffixArrayStr = "";
+
     // 图片处理
     public static final String[] IMG_SUFFIX_ARRAY = new String[]{"-min","-ing","-org"};
 
@@ -39,9 +41,6 @@ public class SuffixConst {
     // 文件上传黑名单
     private static final Set<String> uploadBlackSuffixSet = new HashSet<>();
 
-
-
-
     static {
         ApplicationPropertiesBase.initStaticFields(SuffixConst.class);
 
@@ -49,10 +48,6 @@ public class SuffixConst {
         addClearForbidSuffix(clearProhibitSuffixArrayStr);
         addSystemDefaultSuffix(sysFilterSuffixArrayStr);
     }
-
-
-
-
 
 
     /* 添加系统不处理的后缀列表 */
@@ -121,19 +116,30 @@ public class SuffixConst {
 
     /* 文件遍历时需要过滤的后缀 */
     public static boolean isErgodicNeedFilterSuffix(String filePath,String filterSuffixStr){
+
         int index = filePath.lastIndexOf("/");
         if (index>0){
             filePath = filePath.substring(index+1);
         }
-        String[] suffixArray = IMG_SUFFIX_ARRAY;
+
+        List<String> filterSuffixList = new ArrayList<>(Arrays.asList(IMG_SUFFIX_ARRAY));
+
+        // 遍历配置的过滤
+        if (ergodicFilterSuffixArrayStr!=null && ergodicFilterSuffixArrayStr.length()>0){
+            String[] temp = ergodicFilterSuffixArrayStr.split(",");
+            if (temp.length>0){
+                filterSuffixList.addAll(Arrays.asList(temp));
+            }
+        }
+        // 客户端指定的过滤
         if (filterSuffixStr != null){
             String[] temp = filterSuffixStr.split(",");
             if (temp.length>0){
-                suffixArray = temp;
+                filterSuffixList.addAll(Arrays.asList(temp));
             }
         }
 
-        for (String suffix: suffixArray){
+        for (String suffix: filterSuffixList){
             if (filePath.contains(suffix)) return true;
         }
         return false;
@@ -162,6 +168,6 @@ public class SuffixConst {
 
     public static void main(String[] args) {
 
-        System.out.println( isSystemDefaultFileSuffix(" /ykyy/fs/file/media/drug/1654673675001001026/7.jpg"));
+        System.out.println( isErgodicNeedFilterSuffix(" /ykyy/fs/file/media/drug/1654673675001001026/7.jpg.uploadFile_record",null));
     }
 }

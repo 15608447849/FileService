@@ -57,13 +57,15 @@ public class SQLiteListTable {
     }
 
     //获取列表 根据时间排序
-    public static List<ListStorageItem> getListByType(String listType, int max){
+    public static List<ListStorageItem> getListByType(String listType, int max,int orderby){
+
         List<ListStorageItem> list = new ArrayList<>();
-        final String SQL_SELECT = String.format("SELECT * FROM %s WHERE %s=? ORDER BY %s %s;",LIST_TABLE,LIST_LOCAL_TABLE_TYPE, LIST_LOCAL_TABLE_CREATE,(max>0?"LIMIT "+max : ""));
+        final String SQL_SELECT = String.format("SELECT * FROM %s WHERE %s=? ORDER BY %s "+(orderby==0?"ASC":"DESC")+" %s;",LIST_TABLE,LIST_LOCAL_TABLE_TYPE, LIST_LOCAL_TABLE_CREATE,(max>0?"LIMIT "+max : ""));
         List<Object[]> lines = executeQuerySQL(SQL_SELECT,listType);
         for (Object[] rows : lines) list.add(new ListStorageItem(rows));
         return list;
     }
+
 
     public static int listCount(String listType){
         try {

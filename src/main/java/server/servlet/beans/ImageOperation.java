@@ -92,7 +92,7 @@ public class ImageOperation{
         //循环读取队列中的任务
         while (true){
             try{
-                List<ListStorageItem> list = getListByType(TYPE,100);
+                List<ListStorageItem> list = getListByType(TYPE,100,0);
                 if (list.size() > 0) {
                     executeHandler(list);
                 }else{
@@ -128,7 +128,7 @@ public class ImageOperation{
             String httpUrl = WebServer.domain + relativePath;
             SQLiteFileTable.addFile_LOCAL(relativePath,httpUrl);// 添加记录
             CustomResourceManager.removeCache(relativePath);// 移除缓存
-            FileErgodic.removeCache(relativePath);
+            FileErgodic.removeCache(relativePath);//移除缓存
         }
 
     }

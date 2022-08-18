@@ -1,5 +1,8 @@
 package server.hwobs;
 
+import bottle.properties.abs.ApplicationPropertiesBase;
+import bottle.properties.annotations.PropertiesFilePath;
+import bottle.properties.annotations.PropertiesName;
 import bottle.threadpool.IOSingerThreadPool;
 import bottle.threadpool.IThreadPool;
 import bottle.util.EncryptUtil;
@@ -30,17 +33,25 @@ import static server.sqlites.tables.SQLiteListTable.*;
  * 1. 查询是否存在, 查询MD5是否匹配
  * 2. 执行上传操作
  */
+@PropertiesFilePath("/hwobs.properties")
 public class HWOBSAgent {
 
     private HWOBSAgent(){ }
 
+    @PropertiesName("hwobs.upload.max")
     public static int max_upload_size = 1000;
-    public static int  force_interval_sec = 0;
 
+    @PropertiesName("hwobs.upload.interval")
+    public static int  force_interval_sec = 0;
 
     private static final String TYPE = "OBS_FILE_UPLOAD_QUEUE";
 
-    private static final IThreadPool pool = new IOSingerThreadPool(Runtime.getRuntime().availableProcessors());
+    private static final IThreadPool pool
+            = new IOSingerThreadPool(Runtime.getRuntime().availableProcessors() * 4);
+
+    static {
+        ApplicationPropertiesBase.initStaticFields(HWOBSAgent.class);
+    }
 
     // 添加文件到obs上传队列
     static boolean addFileToQueue(String localFilePath){
@@ -69,6 +80,9 @@ public class HWOBSAgent {
             boolean isAdd = addListValue(TYPE,localFilePath,md5);
 
             Log4j.info( "加入OBS上传队列: "+ localFilePath +" >> "+ isAdd);
+            synchronized (TYPE){
+                TYPE.notifyAll();
+            }
             return isAdd;
         } catch (Exception e) {
             e.printStackTrace();
@@ -81,9 +95,7 @@ public class HWOBSAgent {
         for (String localPath : localPathList){
             addFileToQueue(localPath);
         }
-        synchronized (TYPE){
-            TYPE.notifyAll();
-        }
+
     }
 
     public static int getQueueSize(){
@@ -93,8 +105,13 @@ public class HWOBSAgent {
     private static final Thread thread = new Thread(() -> {
         while (true){
             try{
-                List<ListStorageItem> list = getListByType(TYPE,max_upload_size);
-                if (list.size() > 0) {
+
+                List<ListStorageItem> list = null;
+                if (max_upload_size>0){
+                    list = getListByType(TYPE,max_upload_size,1);
+                }
+
+                if (list!=null  && list.size() > 0) {
                     uploadFileToOBS(list);
                 }else{
                     synchronized (TYPE){
@@ -111,6 +128,8 @@ public class HWOBSAgent {
         try{
 
             int total = list.size();
+            Log4j.info("OBS 本次上传文件数: "+ total );
+
             long _stime = System.currentTimeMillis();
             String _sTimeStr = TimeTool.date_yMd_Hms_2Str(new Date());
 
@@ -120,8 +139,12 @@ public class HWOBSAgent {
                 Callable<Boolean> callback = () -> {
                     // 上传执行
                     boolean removeQueue = executeUploadFileToOBS(it.value,it.attach);// value=文件本地路径, attach=文件MD5
-                    boolean isDelRes = removeListValue(TYPE, it.value);// 从数据库列表删除
-                    if (!removeQueue || !isDelRes)  Log4j.info("OBS上传=" + removeQueue+" 移除队列=" + isDelRes);
+                    if (removeQueue){
+                        removeListValue(TYPE, it.value);// 从数据库列表删除
+                    }
+//                    boolean isDelRes = removeListValue(TYPE, it.value);// 从数据库列表删除
+//                    if (!removeQueue || !isDelRes)  Log4j.info("OBS上传=" + removeQueue+" 移除队列=" + isDelRes);
+
                     return removeQueue;
                 };
 
@@ -141,9 +164,10 @@ public class HWOBSAgent {
             long _etime = System.currentTimeMillis();
 
             Log4j.info(
-                    " 开始时间: "+ _sTimeStr +
-                    " 成功/总数: "+ (total - failIndex)+"/"+ total +
-                    " 用时: "+  TimeTool.formatDuring(_etime - _stime) );
+                    "OBS 上传完成 " +
+                            " 开始时间: "+ _sTimeStr +
+                            " 成功/总数: "+ (total - failIndex)+"/"+ total +
+                            " 用时: "+  TimeTool.formatDuring(_etime - _stime) );
 
         }catch (Exception e){
             e.printStackTrace();
@@ -179,7 +203,7 @@ public class HWOBSAgent {
         return existIdentity(TYPE,localFileMD5);
     }
 
-    private static boolean checkOBSExist(String remotePath,String localFileMD5) {
+    public static boolean checkOBSExist(String remotePath,String localFileMD5) {
 
         String remoteFileMD5 = HWOBSServer.getFileMD5(remotePath);
         return remoteFileMD5!=null && remoteFileMD5.equals(localFileMD5);
@@ -190,7 +214,7 @@ public class HWOBSAgent {
             // 判断是否启用OBS,且文件存在,尝试通过OBS获取
             if (HWOBSServer.isEnable &&  HWOBSServer.existFile(path) ){
                 String url = convertLocalFileToCDNUrl(path);
-                Log4j.info("获取OBS资源 " + url );
+                //Log4j.info("获取OBS资源 " + url );
                 url = url.replaceAll("\\s+","%20");// 空格转换
                 return url;
             }

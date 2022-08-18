@@ -23,11 +23,17 @@ public class HWOBSErgodic {
 
     public static boolean isEnable = true;
 
-    public static int current_ergodic=0;
+    public static long start_scan_time = 0;
 
-    public static int current_ergodic_add_upload_queue=0;
+    public static long end_scan_time = 0;
 
-    private static boolean isScan = false;
+    public static long current_ergodic=0;
+
+    public static long current_ergodic_file_len=0;
+
+    public static long current_ergodic_add_upload_queue=0;
+
+    public static boolean isScan = false;
 
     protected static final Thread thread = new Thread(){
         @Override
@@ -47,28 +53,31 @@ public class HWOBSErgodic {
     // 本地文件遍历
     public static void localErgodic() {
         if (isScan) return;
+
         FileErgodicExecute execute = new FileErgodicExecute(WebServer.rootFolderStr, true);
         execute.setCallback(file -> {
             try {
                 current_ergodic ++;
-                if ( isEnable
-                        && System.currentTimeMillis() - file.lastModified() > (retainedTime*1000L)
-                        && !isSystemDefaultFileSuffix(file.getName()) ){
+                current_ergodic_file_len += file.length();
+
+                if ( isEnable  && !isSystemDefaultFileSuffix(file.getName()) && System.currentTimeMillis() - file.lastModified() > (retainedTime*1000L)){
                     boolean isAdd = HWOBSAgent.addFileToQueue(file.getCanonicalPath());
                     if (isAdd) current_ergodic_add_upload_queue++;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+              Log4j.error("OBS本地文件扫描",e);
             }
             return false;
         });
+
         isScan = true;
         current_ergodic_add_upload_queue = 0;
         current_ergodic = 0;
+        current_ergodic_file_len = 0;
+        end_scan_time = 0;
+        start_scan_time = System.currentTimeMillis();
         execute.start();
-        Log4j.info("[华为OBS遍历] 文件总数: "+current_ergodic+"  添加队列: "+ current_ergodic_add_upload_queue + " 队列数量: " + HWOBSAgent.getQueueSize());
-        current_ergodic_add_upload_queue = 0;
-        current_ergodic = 0;
+        end_scan_time = System.currentTimeMillis();
         isScan = false;
     }
 

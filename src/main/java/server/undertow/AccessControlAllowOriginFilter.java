@@ -1,18 +1,14 @@
 package server.undertow;
 
 import bottle.util.Log4j;
+import bottle.util.TimeTool;
 import io.undertow.servlet.spec.HttpServletRequestImpl;
-import io.undertow.servlet.spec.HttpServletResponseImpl;
-import server.undertow.WebServer;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -22,7 +18,44 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
 
-    public static final Map<Thread,String> lastAccessRequestMap = new ConcurrentHashMap<>();
+    public static boolean isPrintAccess;
+    public static final Map<Thread, List<String>> accessRequestMap = new ConcurrentHashMap<>();
+    public static final Map<String, Long> accessRequestPathMap = new ConcurrentHashMap<>();
+
+    public static long accessCount;
+    public static int accessCountCollect;
+
+    static {
+        setTimerClearMap();
+    }
+
+    // 固定时间点清理Map
+    private static void setTimerClearMap() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, 0); //凌晨0点
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        Date date=calendar.getTime(); //第一次执行定时任务的时间
+
+        if (date.before(new Date())) {
+            //  第一次执行定时任务的时间加一天
+            Calendar startDT = Calendar.getInstance();
+            startDT.setTime(date);
+            startDT.add(Calendar.DAY_OF_MONTH, 1);
+            date = startDT.getTime();
+        }
+
+        new Timer(true).schedule(new TimerTask() {
+            @Override
+            public void run() {
+                for (Thread thread : accessRequestMap.keySet()){
+                    List<String> values = accessRequestMap.get(thread);
+                    values.clear();
+                }
+                accessRequestPathMap.clear();
+            }
+        },date,24 * 60 * 60 * 1000L);
+    }
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -31,6 +64,11 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+        if (accessCount>=Long.MAX_VALUE) {
+            accessCountCollect ++;
+            accessCount=0;
+        }
+        accessCount++;
 
 
         StringBuilder sb = new StringBuilder();
@@ -38,8 +76,7 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
         sb.append( request.getRemotePort()).append(" >> ");
 
 
-        Log4j.debug( " 接入访问: " + request );
-
+        if (isPrintAccess) Log4j.info( " 接入访问: " + request );
 
         if (request instanceof HttpServletRequestImpl){
             HttpServletRequestImpl imp = (HttpServletRequestImpl) request;
@@ -51,8 +88,24 @@ public class AccessControlAllowOriginFilter implements javax.servlet.Filter{
                 sb.append(headerStr).append("=").append(imp.getHeader(headerStr)).append("\t");
             }
 
-            String time = Log4j.sdf.format(new Date());
-            lastAccessRequestMap.put(Thread.currentThread(),time + " 访问信息\t" + sb );
+            String time = TimeTool.date_yMd_Hms_2Str(new Date());
+
+            String str =
+                    " TIME: "+ time +
+                    " HOST: "+imp.getRemoteHost()+":"+imp.getRemotePort() +
+                    " METHOD: "+ imp.getMethod() +
+                    " PATH: "+ imp.getRequestURI();
+
+            List<String> list = accessRequestMap.computeIfAbsent(Thread.currentThread(), key -> new ArrayList<>());
+            list.add(str);
+            if (list.size()>=Integer.MAX_VALUE){
+                list.clear();
+            }
+
+            String absPath = imp.getRequestURL().toString();
+            Long  count = accessRequestPathMap.getOrDefault(absPath,0L);
+            accessRequestPathMap.put(absPath,++count);
+
         }
 
         HttpServletRequest req = (HttpServletRequest) request;
