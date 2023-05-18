@@ -11,10 +11,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 public class ZipUtil {
 
@@ -34,7 +33,7 @@ public class ZipUtil {
     }
 
     /* 下载指定url的文件到本地具体位置 */
-    private static File httpUrlToLocalFile(String urlStr,String storageDir){
+    private static File httpUrlToLocalFile(String urlStr, String storageDir, Map<String,String> reqProp){
         //流转文件
         HttpURLConnection conn = null;
         try {
@@ -42,11 +41,17 @@ public class ZipUtil {
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(60*1000);
 
+            if (reqProp!=null){
+                for (Map.Entry<String, String> next : reqProp.entrySet()) {
+                    conn.setRequestProperty(next.getKey(), next.getValue());
+                }
+            }
+
             String fileName =  System.currentTimeMillis() + "-" +urlStr.substring(urlStr.lastIndexOf("/")+1);
 
             File localFile = new File(storageDir,fileName);
             try(InputStream in = conn.getInputStream()){
-                try(OutputStream out=new FileOutputStream(localFile)){
+                try(OutputStream out= Files.newOutputStream(localFile.toPath())){
                     byte[] buf = new byte[1024];
                     int len;
                     while((len=in.read(buf))>0){
@@ -77,7 +82,8 @@ public class ZipUtil {
             // 远程url
             if(path.startsWith("http") || path.startsWith("https")){
                 if (storageDir!=null){
-                    file =  httpUrlToLocalFile(path,storageDir);
+                    Map<String,String> prop = WebServer.getCommHeader();
+                    file =  httpUrlToLocalFile(path,storageDir,prop);
                 }
             }else{
                 // 本地文件
@@ -89,7 +95,8 @@ public class ZipUtil {
                     // 尝试通过OBS获取
                     String remoteUrl = HWOBSAgent.getFileURL(path);
                     if (remoteUrl!=null){
-                        file =  httpUrlToLocalFile(remoteUrl,storageDir);
+                        Map<String,String> prop = WebServer.getCommHeader();
+                        file =  httpUrlToLocalFile(remoteUrl,storageDir,prop);
                     }
                 }
 

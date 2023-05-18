@@ -8,13 +8,13 @@ import bottle.threadpool.IThreadPool;
 import bottle.util.EncryptUtil;
 import bottle.util.Log4j;
 import bottle.util.TimeTool;
-import io.undertow.server.handlers.resource.Resource;
-import io.undertow.server.handlers.resource.URLResource;
+import io.undertow.server.handlers.resource.*;
+import server.undertow.CusURLResource;
 import server.sqlites.tables.SQLiteFileTable;
 import server.undertow.WebServer;
 
-import java.io.File;
-import java.net.URI;
+import java.io.*;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -214,6 +214,7 @@ public class HWOBSAgent {
             // 判断是否启用OBS,且文件存在,尝试通过OBS获取
             if (HWOBSServer.isEnable &&  HWOBSServer.existFile(path) ){
                 String url = convertLocalFileToCDNUrl(path);
+//                String url = convertLocalFileToOBSUrl(path);
                 //Log4j.info("获取OBS资源 " + url );
                 url = url.replaceAll("\\s+","%20");// 空格转换
                 return url;
@@ -225,14 +226,42 @@ public class HWOBSAgent {
     }
 
 
+//    private static class MFactory implements URLStreamHandlerFactory {
+//        private static String PREFIX = "sun.net.www.protocol";
+//
+//        private MFactory() {
+//        }
+//
+//        public URLStreamHandler createURLStreamHandler(String var1) {
+//            String var2 = PREFIX + "." + var1 + ".Handler";
+//
+//            try {
+//                Class var3 = Class.forName(var2);
+//                return (URLStreamHandler)var3.newInstance();
+//            } catch (ReflectiveOperationException var4) {
+//                throw new InternalError("could not load " + var1 + "system protocol handler", var4);
+//            }
+//        }
+//    }
+
+
     public static Resource getResource(String path) {
         try{
+
+
             String url = getFileURL(path);
+            Log4j.info("尝试获取OBS资源: "+ path+" 目的URL: "+ url);
             if (url!=null){
-                return new URLResource( URI.create(url).toURL() ,null);
+                URI uri = URI.create(url);
+                URL _url = uri.toURL();
+
+//                Resource resource = new CusURLResource(_url,null);
+                Resource resource = new CusURLResource(_url,null);
+                return resource;
+
             }
         }catch (Exception e){
-            Log4j.error("获取OBS资源: "+ path,e);
+            Log4j.error("OBS资源获取错误: "+ path,e);
         }
         return null;
     }

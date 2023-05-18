@@ -72,6 +72,8 @@ public class CustomResourceManager extends PathResourceManager {
                     resource = super.getResource(p);
                     if (resource == null){
                         resource = HWOBSAgent.getResource(p);
+                        Log4j.info("OBS 返回Resource对象: " + resource);
+
                     }
                 }
             } catch (Exception e) {

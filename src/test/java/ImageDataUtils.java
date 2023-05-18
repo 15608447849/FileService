@@ -1,5 +1,5 @@
-import com.sun.image.codec.jpeg.JPEGCodec;
-import com.sun.image.codec.jpeg.JPEGImageEncoder;
+//import com.sun.image.codec.jpeg.JPEGCodec;
+//import com.sun.image.codec.jpeg.JPEGImageEncoder;
 import net.coobird.thumbnailator.Thumbnails;
 
 
@@ -87,8 +87,8 @@ public class ImageDataUtils {
 
             FileOutputStream out = new FileOutputStream(distImage); // 输出到文件流
             // 可以正常实现bmp、png、gif转jpg
-            JPEGImageEncoder encoder = JPEGCodec.createJPEGEncoder(out);
-            encoder.encode(image); // JPEG编码
+//            JPEGImageEncoder encoder = JPEGCodec.createJPEGEncoder(out);
+//            encoder.encode(image); // JPEG编码
             out.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -111,7 +111,8 @@ public class ImageDataUtils {
 //            float x = buffImg.getWidth()/2.0f * 0.02f + 12 ;
 
             Font font = new java.awt.Font("Default", Font.ITALIC, Math.max(buffImg.getWidth(),buffImg.getHeight()) /15);//字体
-            FontMetrics fm = sun.font.FontDesignMetrics.getMetrics(font);
+            FontMetrics fm = null;
+//            FontMetrics fm = sun.font.FontDesignMetrics.getMetrics(font);
             int fontW = fm.stringWidth(logoText);
             int fontH = fm.getHeight();
             //默认居中

@@ -1,10 +1,14 @@
 package server.comm;
 
 
+import bottle.properties.abs.ApplicationPropertiesBase;
+import bottle.properties.annotations.PropertiesFilePath;
+import bottle.properties.annotations.PropertiesName;
 import bottle.util.FileTool;
 import bottle.util.HttpUtil;
 import bottle.util.Log4j;
 import net.coobird.thumbnailator.Thumbnails;
+import org.apache.commons.io.FileUtils;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -14,6 +18,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URL;
+import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -23,7 +28,16 @@ import java.util.List;
  * @Author: leeping
  * @Date: 2019/4/1 14:54
  */
+@PropertiesFilePath("/web.properties")
 public class OperationUtil {
+
+
+    @PropertiesName("image.use.tinypng.url")
+    private static  String tinypng_url;
+
+    static {
+        ApplicationPropertiesBase.initStaticFields(OperationUtil.class);
+    }
 
     // 获取人性化文件大小
     public static String getNetFileSizeDescription(long size) {
@@ -138,7 +152,7 @@ public class OperationUtil {
 
 
     //原图,压缩后图片存储
-    public static boolean imageCompress(File image,File compress,long spSize){
+    public static boolean imageCompressUseTinypng(File image, File compress, long spSize){
         try {
             if (!image.exists() || image.length() == 0) throw new FileNotFoundException(image.getCanonicalPath()) ;
 
@@ -154,7 +168,7 @@ public class OperationUtil {
             }
             if (!isSuccess){
                 FileTool.copyFile(image,compress);// 复制图片到临时图片
-                imageCompress(compress,spSize,0);// 对临时图片进行处理
+                imageCompressUseTinypng(compress,spSize,0);// 对临时图片进行处理
                 Log4j.info("tinypng 压缩处理: "+ image);
             }
             return compress.length() > 0;
@@ -165,36 +179,38 @@ public class OperationUtil {
     }
 
 
-    private static File imageCompress(final File image,long spSize,int executeCount){
+    private static File imageCompressUseTinypng(final File image, long spSize, int executeCount){
         try {
+            if (tinypng_url == null) return image;
 
             HashMap<String, String> map = new HashMap<>();
-            map.put("user-agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36");
+            map.put("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36");
+            map.put("origin", "https://tinypng.com");
+            map.put("referer", "https://tinypng.com/");
 
-            final HttpUtil.CallbackAbs callback = new HttpUtil.CallbackAbs() {
-                public void onResult(HttpUtil.Response response) {
-                    if (image.exists()) image.delete();
+            new HttpUtil.Request(tinypng_url)
+                    .setType(HttpUtil.Request.POST)
+                    .setBinaryStreamFile(image)
+                    .setBinaryStreamUpload()
+                    .setLocalCacheByteMax(1460)
+                    .setParams(map)
+                    .setReadTimeout(3 * 60 * 1000)
+                    .setCallback(new HttpUtil.CallbackAbs() {
+                        public void onResult(HttpUtil.Response response) {
+                            if (image.exists() && !image.delete()) return;
 
-                    String url = response.getConnection().getHeaderField("location");
-                    new HttpUtil.Request(url).setDownloadFileLoc(image).download().setLocalCacheByteMax(1024*1024).execute();
-                }
-            };
-
-             new HttpUtil.Request("https://tinypng.com/web/shrink")
-                     .setType(HttpUtil.Request.POST)
-                     .setBinaryStreamFile(image)
-                     .setBinaryStreamUpload()
-                     .setLocalCacheByteMax(1460)
-                     .setParams(map)
-                     .setReadTimeout(3 * 60 * 1000)
-                     .setCallback(callback)
-                     .execute();
+                            String url = response.getConnection().getHeaderField("location");
+                            new HttpUtil.Request(url).setDownloadFileLoc(image).download().setLocalCacheByteMax(1024*1024).execute();
+                        }
+                    })
+                    .execute();
 
         } catch (Exception ignored) { }
 
         File temp = image.getAbsoluteFile();
-        if (executeCount<10 && temp.length() > spSize) {
-            return imageCompress(temp,spSize,++executeCount);
+        if (executeCount<3 && temp.length() > spSize) {
+            Log4j.info("tinypng 第"+executeCount+"次循环压缩: temp文件大小: "+ temp.length());
+            return imageCompressUseTinypng(temp,spSize,++executeCount);
         }
         return temp;
     }
@@ -215,25 +231,6 @@ public class OperationUtil {
         Iterator<ImageReader> readers = ImageIO.getImageReaders(image);
         String formatName = readers.next().getFormatName();
         System.out.println(formatName);
-    }
-
-    public static void main(String[] args) {
-        try {
-            /*
-            markImageByText("onekdrug",
-                    new File("C:\\Users\\Administrator\\Pictures\\2.jpg"),
-                    0,
-                    new Color(250, 1, 255),
-                    0.2f,
-                    LogoPlace.RIGHT_BOTTOM.value);
-                    */
-            System.out.println(getFormatName(new File("C:\\Users\\Administrator\\Pictures\\3.jpg")));
-
-            imageCompress_scale_min(new File("C:\\Users\\Administrator\\Pictures\\3.jpg"),
-                    new File("C:\\Users\\Administrator\\Pictures\\3-min.jpg"));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
 
@@ -355,7 +352,7 @@ public class OperationUtil {
             // 10、生成图片
             String suf = image.getName().substring(image.getName().indexOf(".")+1);
 
-            try(OutputStream os = new FileOutputStream(image)){
+            try(OutputStream os = Files.newOutputStream(image.toPath())){
                 ImageIO.write(buffImg, suf, os);
                 return image.getAbsoluteFile();
             }catch (Exception e){
@@ -433,7 +430,7 @@ public class OperationUtil {
             g.drawImage(icon, x, y, null);//水印的位置
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER));
             g.dispose();
-            os = new FileOutputStream(image);
+            os = Files.newOutputStream(image.toPath());
             // 生成图片
             ImageIO.write(buffImg, fileSuffix(image), os);
             return image.getAbsoluteFile();
@@ -474,6 +471,32 @@ public class OperationUtil {
         return imageSrc;
     }
 
+    public static void main(String[] args) {
+        try {
+            /*
+            markImageByText("onekdrug",
+                    new File("C:\\Users\\Administrator\\Pictures\\2.jpg"),
+                    0,
+                    new Color(250, 1, 255),
+                    0.2f,
+                    LogoPlace.RIGHT_BOTTOM.value);
+                    */
+//            System.out.println(getFormatName(new File("C:\\Users\\Administrator\\Pictures\\3.jpg")));
+//
+//            imageCompress_scale_min(new File("C:\\Users\\Administrator\\Pictures\\3.jpg"),
+//                    new File("C:\\Users\\Administrator\\Pictures\\3-min.jpg"));
+
+            File f1 = new File("C:\\Users\\Administrator\\Desktop\\1.jpg");
+            File f2 = new File("C:\\Users\\Administrator\\Desktop\\2.jpg");
+            FileUtils.copyFile(f1,f2);
+            System.out.println("开始压缩, 大小: "+ f2.length());
+            imageCompressUseTinypng(f2, 46334, 0);
+            System.out.println("完成压缩, 大小: "+ f2.length());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
 
 }

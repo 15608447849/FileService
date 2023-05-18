@@ -7,6 +7,10 @@ import bottle.util.*;
 import com.obs.services.ObsClient;
 import com.obs.services.exception.ObsException;
 import com.obs.services.model.*;
+import okhttp3.Call;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import server.comm.RuntimeUtil;
 
 import java.io.File;
@@ -273,7 +277,7 @@ public class HWOBSServer {
 
     // 查询指定文件路径
     static boolean existFile(String remotePath){
-//        Log4j.info("[OBS] 查询指定文件是否存在: "+ remotePath);
+        boolean isExist = false;
         remotePath = remotePath.replace("\\",FileTool.SEPARATOR);
 
         if (remotePath.startsWith("/")){
@@ -287,15 +291,17 @@ public class HWOBSServer {
 
         try {
             if (isEnable) {
-                ObjectMetadata metadata = obsClient_info.getObjectMetadata(bucketName, remotePath);
-                return true;
+
+               ObjectMetadata metadata = obsClient_info.getObjectMetadata(bucketName, remotePath);
+               isExist = true;
             }
         } catch (ObsException e) {
-            //recodeException("[OBS]列举 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+            recodeException("[OBS]列举 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
         }catch (Exception ee){
             Log4j.info("[OBS] 查询指定文件是否存在 "+ remotePath+"  错误 "+ ee);
         }
-        return false;
+        Log4j.info("[OBS] 查询指定文件是否存在: "+ remotePath+" 结果: "+ isExist);
+        return isExist;
     }
 
 
@@ -303,7 +309,7 @@ public class HWOBSServer {
     static void deleteFileList(List<String> fileList){
         for (String path: fileList){
            if (path==null || path.length()==0) continue;
-            deleteFile(path);
+           deleteFile(path);
         }
 
     }
@@ -357,7 +363,9 @@ public class HWOBSServer {
 
             UploadFileRequest  request = new UploadFileRequest(bucketName, remotePath);
             request.setObjectMetadata(requestMeta);
+            // 设置对象访问权限为公共读
             request.setAcl(AccessControlList.REST_CANNED_PUBLIC_READ);
+            // 上传
             request.setUploadFile(localPath);
             if (uploadRecodeDir!=null){
                 request.setCheckpointFile(uploadRecodeDir+"/"+localFileMD5+".uploadFile_record");
@@ -418,6 +426,40 @@ public class HWOBSServer {
         return cdnURL+remotePath;
     }
 
+    // 设置指定文件私有化
+    public static boolean setFileAclPrivate(String remotePath){
+        try {
+            if (remotePath.startsWith("/")) remotePath=remotePath.substring(1);
+            obsClient_info.setObjectAcl(bucketName,remotePath,AccessControlList.REST_CANNED_PRIVATE);
+            return true;
+        } catch (ObsException e) {
+            e.printStackTrace();
+            recodeException("[OBS]私有化错误("+remotePath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+            return false;
+        }
+    }
+
+    public static String setFileAclTempAccess(String remotePath) {
+        try {
+            if (remotePath.startsWith("/")) remotePath=remotePath.substring(1);
+
+            long expireSeconds = 8L;
+            TemporarySignatureRequest request = new TemporarySignatureRequest(HttpMethodEnum.GET, expireSeconds);
+            request.setBucketName(bucketName);
+            request.setObjectKey(remotePath);
+            TemporarySignatureResponse response = obsClient_info.createTemporarySignature(request);
+            String url = response.getSignedUrl();
+            System.out.println("授权路径: " + url);
+            int index = url.lastIndexOf("?");
+            String str = url.substring(index);
+            System.out.println("授权字符串: " + str);
+            return str;
+        } catch (ObsException e) {
+            recodeException("[OBS]临时授权错误("+remotePath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+            return "";
+        }
+    }
+
     //结束客户端
     static void stop(){
         try {
@@ -444,11 +486,10 @@ public class HWOBSServer {
     public static void main(String[] args) throws Exception{
 //        File f = new File("C:\\Users\\Administrator\\Desktop\\ERP\\14.jpg");
 //        uploadLocalFile(f.getPath(),"/lsp/0.jpg",EncryptUtil.getFileMd5ByString(f));
-        File f = new File("C:\\Users\\Administrator\\Downloads\\CLion-2022.2.win.zip");
-        uploadLocalFile(f.getPath(),"/lsp/CLion-2022.2.win.zip",EncryptUtil.getFileMd5ByString(f));
+//        File f = new File("C:\\Users\\Administrator\\Downloads\\CLion-2022.2.win.zip");
+//        uploadLocalFile(f.getPath(),"/lsp/CLion-2022.2.win.zip",EncryptUtil.getFileMd5ByString(f));
+
     }
-
-
 
 
 

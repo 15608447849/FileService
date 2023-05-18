@@ -16,15 +16,24 @@ import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.FilterInfo;
-import org.xnio.CompressionType;
-import org.xnio.Options;
+import org.xnio.*;
+import org.xnio.ssl.JsseXnioSsl;
 import server.LunchServer;
 import server.servlet.imps.*;
 
+import javax.net.ssl.*;
 import javax.servlet.DispatcherType;
 import javax.servlet.Servlet;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URLConnection;
+import java.nio.ByteBuffer;
 import java.nio.file.Paths;
+import java.security.*;
+import java.security.cert.CertificateException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 
@@ -32,13 +41,27 @@ import static io.undertow.servlet.Servlets.servlet;
 
 @PropertiesFilePath("/web.properties")
 public class WebServer {
+
     private static String webHost = "0.0.0.0";
     @PropertiesName("web.port")
     private static int webPort = 80;
+
     @PropertiesName("web.domain")
-    public static String domain = "http://127.0.0.1:80";
+    public static String domain = null;
     @PropertiesName("web.file.directory")
     private static String rootPath = "./file_server_root";
+
+    @PropertiesName("web.ssl.key.keystore")
+    private static String keystorePath = "./CA/certs/client.keystore";
+    @PropertiesName("web.ssl.key.password")
+    private static String keystorePassword ;
+    @PropertiesName("web.ssl.trust.keystore")
+    private static String trustKeystorePath = "./CA/certs/ca-trust.keystore";
+
+    @PropertiesName("http.header.referer")
+    private static String http_head_referer = null;
+
+
     //根目录文件夹
     public static File rootFolder ;
     public static String rootFolderStr;
@@ -63,8 +86,6 @@ public class WebServer {
         FileUpLoad.setTemporaryFolder(1024*10,1024 * 1024 * 1024 * 5L,temporaryFolder);
 
         Log4j.info("本地文件根目录: "+ rootFolderStr +" 临时目录: "+ temporaryFolder.getCanonicalPath());
-
-
     }
 
     //临时文件目录
@@ -74,7 +95,9 @@ public class WebServer {
 
     private static void loadUndertow() throws Exception{
             if (instance==null){
-                Log4j.info("尝试监听本地地址:  " + webHost + " " + webPort );
+
+                SSLContext sslContext = initSSL();
+
                 //开启web文件服务器
                 DeploymentInfo servletBuilder = Servlets.deployment()
                         .setClassLoader(LunchServer.class.getClassLoader())
@@ -100,18 +123,13 @@ public class WebServer {
                 // 添加servlet
                 loadServlet(servletBuilder);
 
+                // 构建http处理器
                 DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
-
                 manager.deploy();
-
                 HttpHandler httpHandler = manager.start();
 
                 Undertow.Builder builder = Undertow.builder();
-
-                builder.addHttpListener(WebServer.webPort,webHost,httpHandler);
-
                 // 连接访问参数配置
-
                 builder.setIoThreads(64);
                 builder.setWorkerThreads(256);
 
@@ -131,14 +149,70 @@ public class WebServer {
 
                 builder.setWorkerOption(Options.COMPRESSION_TYPE , CompressionType.GZIP);
                 builder.setWorkerOption(Options.COMPRESSION_LEVEL ,9);
+
+                if (sslContext == null){
+                    builder.addHttpListener(WebServer.webPort,webHost,httpHandler);
+                }else {
+                    builder.addHttpsListener(WebServer.webPort,webHost,sslContext,httpHandler);
+                }
+
+                // 构建实例
                 instance = builder.build();
+                if (domain==null) domain = "http://" + webHost + ":" + webPort;
+                Log4j.info("尝试监听本地地址:  " + domain );
             }
+    }
+
+    /*
+    * jks->p12
+    * keytool -importkeystore -srckeystore sslkey.jks -srcstoretype JKS -deststoretype PKCS12 -destkeystore sslkey.p12
+    * p12->jks
+    * keytool -importkeystore -srckeystore keystore.p12 -srcstoretype PKCS12 -deststoretype JKS -destkeystore keystore.jks
+    * */
+    private static SSLContext initSSL() {
+        try {
+
+            File keystoreFile = new File(keystorePath);
+            if (!keystoreFile.exists() || keystoreFile.length()<=0)  return null;
+            File trustKeystoreFile = new File(trustKeystorePath);
+            if (!trustKeystoreFile.exists() || trustKeystoreFile.length()<=0) return null;
+            if (keystorePassword == null) return null;
+            Log4j.info("创建SSL: " + keystorePath +"\t"+trustKeystorePath+"\t"+keystorePassword);
+
+            //客户端证书库
+            KeyStore clientKeystore = KeyStore.getInstance("pkcs12");
+            FileInputStream keystoreFis = new FileInputStream(keystoreFile);
+            clientKeystore.load(keystoreFis, keystorePassword.toCharArray());
+
+            //密钥库
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance("sunx509");
+            kmf.init(clientKeystore, keystorePassword.toCharArray());
+
+            //信任证书库
+            KeyStore trustKeystore = KeyStore.getInstance("jks");
+            FileInputStream trustKeystoreFis = new FileInputStream(trustKeystoreFile);
+            trustKeystore.load(trustKeystoreFis, keystorePassword.toCharArray());
+
+            //信任库
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance("sunx509");
+            tmf.init(trustKeystore);
+
+            //初始化SSL上下文
+            SSLContext sslContext = SSLContext.getInstance("SSL");
+            sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+
+            Log4j.info("创建 SSL context : "+ sslContext.toString());
+
+            return sslContext;
+        } catch (Exception e) {
+           Log4j.error("初始化SSL失败",e);
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
     private static void loadServlet(DeploymentInfo servletBuilder) {
         String packageName = "server.servlet.imps";
-//        System.out.println(packageName);
         // 读取执行路径下的类
         Set<Class<?>> classes = DynamicLoadClassUtil.scanCurrentAllClassBySpecPath(packageName,javax.servlet.http.HttpServlet.class);
         for (Class<?> cls: classes){
@@ -148,7 +222,7 @@ public class WebServer {
                     if (annotation == null) continue;
 
                     servletBuilder.addServlet(servlet(annotation.name(),  (Class<? extends Servlet>) cls).addMapping(annotation.path()));
-                    Log4j.info("添加servlet\t"+cls +"\t"+ annotation.name() +"\t"+domain+annotation.path()  );
+                    Log4j.info("添加servlet\t"+cls +"\t"+ annotation.name() +"\t"+ "http://"+webHost+":"+webPort + annotation.path()  );
                 }
             }catch (Exception e){
                 e.printStackTrace();
@@ -197,4 +271,18 @@ public class WebServer {
         }
     }
 
+    public static Map<String, String> getCommHeader() {
+        Map<String,String> header = new HashMap<String,String>(){
+            {
+                put("Referer",http_head_referer==null?"":http_head_referer);
+            }
+        };
+        return header;
+    }
+
+    public static void setCommHeader(URLConnection connection) {
+        if (http_head_referer!=null){
+            connection.setRequestProperty("Referer",http_head_referer);
+        }
+    }
 }

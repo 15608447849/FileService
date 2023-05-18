@@ -243,7 +243,7 @@ public class ImageOperation{
                 File temp = new File(image_ing);// 压缩中的临时文件
 
                 long time = System.currentTimeMillis();
-                boolean isSuccess = imageCompress(image,temp,spSize);
+                boolean isSuccess = imageCompressUseTinypng(image,temp,spSize);
                 Log4j.info("图片("+ image + ")压缩"+  ( isSuccess ? "成功":"失败") +",耗时:" + (System.currentTimeMillis() - time )+" 毫秒" +
                         ",压缩变化: "+image.length()+" -> "+temp.length());
 
