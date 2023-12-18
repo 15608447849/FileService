@@ -79,27 +79,32 @@ public class ZipUtil {
         for (String path : paths){
             Log4j.info("[ZIP] 目标路径 : "+ path);
             File file = null;
-            // 远程url
-            if(path.startsWith("http") || path.startsWith("https")){
-                if (storageDir!=null){
-                    Map<String,String> prop = WebServer.getCommHeader();
-                    file =  httpUrlToLocalFile(path,storageDir,prop);
-                }
-            }else{
-                // 本地文件
-                if (!path.startsWith(FileTool.SEPARATOR)) path = FileTool.SEPARATOR + path;// 保证前面有 '/'
-                file = new File(WebServer.rootFolder,  path);
-
-                if (!file.exists()){
-                    Log4j.info("[ZIP] 文件不存在 : "+ file);
-                    // 尝试通过OBS获取
-                    String remoteUrl = HWOBSAgent.getFileURL(path);
-                    if (remoteUrl!=null){
+            try {
+                file = null;
+                // 远程url
+                if(path.startsWith("http") || path.startsWith("https")){
+                    if (storageDir!=null){
                         Map<String,String> prop = WebServer.getCommHeader();
-                        file =  httpUrlToLocalFile(remoteUrl,storageDir,prop);
+                        file =  httpUrlToLocalFile(path,storageDir,prop);
                     }
-                }
+                }else{
+                    // 本地文件
+                    if (!path.startsWith(FileTool.SEPARATOR)) path = FileTool.SEPARATOR + path;// 保证前面有 '/'
+                    file = new File(WebServer.rootFolder,  path);
 
+                    if (!file.exists()){
+                        Log4j.info("[ZIP] 文件不存在 : "+ file);
+                        // 尝试通过OBS获取
+                        String remoteUrl = HWOBSAgent.getFileURL(path);
+                        if (remoteUrl!=null){
+                            Map<String,String> prop = WebServer.getCommHeader();
+                            file =  httpUrlToLocalFile(remoteUrl,storageDir,prop);
+                        }
+                    }
+
+                }
+            } catch (Exception e) {
+                Log4j.error("ZIP 打包错误, 失败路径: "+ path,e);
             }
 
             if (file!=null && file.exists() && file.isFile() && file.length()>0){

@@ -13,10 +13,9 @@ import okhttp3.Request;
 import okhttp3.Response;
 import server.comm.RuntimeUtil;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -38,6 +37,9 @@ public class HWOBSServer {
 
     @PropertiesName("hwobs.userName")
     public static String userName;
+
+    @PropertiesName("hwobs.password")
+    public static String password;
 
     @PropertiesName("hwobs.areau.endpoint.flag")
     private static String areaEndpointPrev;
@@ -85,7 +87,7 @@ public class HWOBSServer {
             obsClient_info = new ObsClient(accessKeyId,secretAccessKey,endpoint);
             obsClient_upload = new ObsClient(accessKeyId,secretAccessKey,endpoint);
             noExistOnCreateBucket();
-            printBucketList();
+//            printBucketList();
         }
 
     }
@@ -112,9 +114,7 @@ public class HWOBSServer {
                 obsBucket.setBucketStorageClass(StorageClassEnum.STANDARD);
                 // 设置桶区域位置
                 obsBucket.setLocation(areaEndpointPrev);
-
                 HeaderResponse response = obsClient_bucket.createBucket(obsBucket);
-
                 Log4j.info("[OBS]创建桶("+bucketName+") 区域("+areaEndpointPrev+") 成功, 结果:\n\t"+ response);
             }
 
@@ -154,12 +154,13 @@ public class HWOBSServer {
         try {
             BucketCors cors = obsClient_bucket.getBucketCors(bucketName);
             for(BucketCorsRule rule : cors.getRules()){
-                sb.append("\t\t\n" + rule.getId());
-                sb.append("\t\t\n" + rule.getMaxAgeSecond());
-                sb.append("\t\t\n" + rule.getAllowedHeader());
-                sb.append("\t\t\n" + rule.getAllowedOrigin());
-                sb.append("\t\t\n" + rule.getAllowedMethod());
-                sb.append("\t\t\n" + rule.getExposeHeader());
+                sb.append("\nbucketName="+bucketName);
+                sb.append("\ngetId\t\t" + rule.getId());
+                sb.append("\ngetMaxAgeSecond\t\t" + rule.getMaxAgeSecond());
+                sb.append("\ngetAllowedHeader\t\t" + rule.getAllowedHeader());
+                sb.append("\ngetAllowedOrigin\t\t" + rule.getAllowedOrigin());
+                sb.append("\ngetAllowedMethod\t\t" + rule.getAllowedMethod());
+                sb.append("\ngetExposeHeader\t\t" + rule.getExposeHeader());
             }
         } catch (ObsException e) {
             //recodeException("打印桶跨域规则",e);
@@ -395,6 +396,8 @@ public class HWOBSServer {
             try {
                 CompleteMultipartUploadResult response = obsClient_upload.uploadFile(request);
                 Log4j.info("[OBS]上传文件("+remotePath+") 成功 大小: "+ RuntimeUtil.byteLength2StringShow(file.length()) +" 用时: "+ TimeTool.formatDuring(System.currentTimeMillis() - time)+" MD5: "+ localFileMD5);
+                refreshCDN("/" + remotePath);
+
             } catch (ObsException e) {
                 recodeException("[OBS]上传文件("+remotePath+") 失败 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误", e);
                 return false;
@@ -413,6 +416,105 @@ public class HWOBSServer {
             recodeException("[OBS]上传文件("+localPath+" -> "+remotePath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
         }
         return false;
+    }
+
+    private static String authTokens_CDN() {
+        String text = null;
+        HttpURLConnection con = null;
+        try {
+            String url = "https://iam.af-south-1.myhuaweicloud.com/v3/auth/tokens";
+            con = (HttpURLConnection)(new URL(url)).openConnection();
+            con.setRequestMethod("POST");
+            con.setDoOutput(true);
+            con.setDoInput(true);
+            con.setUseCaches(false);
+            con.setRequestProperty("Charset", "UTF-8");
+            con.setRequestProperty("Content-Type", "application/json");
+
+            String json = "{\n" +
+                    " \"auth\": {\n" +
+                    "  \"identity\": {\n" +
+                    "   \"methods\": [\n" +
+                    "    \"password\"\n" +
+                    "   ],\n" +
+                    "   \"password\": {\n" +
+                    "    \"user\": {\n" +
+                    "     \"domain\": {\n" +
+                    "      \"name\": \""+userName+"\"\n" +
+                    "     },\n" +
+                    "     \"name\": \""+userName+"\",\n" +
+                    "     \"password\": \""+password+"\"\n" +
+                    "    }\n" +
+                    "   }\n" +
+                    "  }\n" +
+                    " }\n" +
+                    "}";
+
+            OutputStreamWriter osw = new OutputStreamWriter(con.getOutputStream(), StandardCharsets.UTF_8);
+            osw.write(json);
+            osw.flush();
+            osw.close();
+
+            if (con.getResponseCode() == 201)
+                text = con.getHeaderField("X-Subject-Token");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (con != null) con.disconnect();
+        }
+        return text;
+    }
+    private static String refreshTask_CDN(String targetURL){
+        HttpURLConnection con = null;
+        try {
+            String url = "https://cdn.myhuaweicloud.com/v1.0/cdn/content/refresh-tasks";
+            con = (HttpURLConnection)(new URL(url)).openConnection();
+            con.setRequestMethod("POST");
+            con.setDoOutput(true);
+            con.setDoInput(true);
+            con.setUseCaches(false);
+            con.setRequestProperty("Charset", "UTF-8");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("X-Auth-Token", authTokens_CDN());
+
+            String json = "{\n" +
+                    " \"refresh_task\": {\n" +
+                    "  \"type\": \"file\",\n" +
+                    "  \"mode\": \"all\",\n" +
+                    "  \"zh_url_encode\": true,\n" +
+                    "  \"urls\": [\n" +
+                    "   \""+targetURL+"\"\n" +
+                    "  ]\n" +
+                    " }\n" +
+                    "}";
+
+            OutputStreamWriter osw = new OutputStreamWriter(con.getOutputStream(), StandardCharsets.UTF_8);
+            osw.write(json);
+            osw.flush();
+            osw.close();
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while((line = br.readLine()) != null) {
+                sb.append(line);
+            }
+            br.close();
+            return sb.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (con != null) con.disconnect();
+        }
+        return null;
+    }
+
+
+
+    private static void refreshCDN(String remotePath) {
+        if (cdnURL == null) return;
+        refreshTask_CDN(cdnURL + remotePath);
     }
 
     //获取文件访问OBS URL
@@ -484,10 +586,14 @@ public class HWOBSServer {
 
 
     public static void main(String[] args) throws Exception{
-//        File f = new File("C:\\Users\\Administrator\\Desktop\\ERP\\14.jpg");
-//        uploadLocalFile(f.getPath(),"/lsp/0.jpg",EncryptUtil.getFileMd5ByString(f));
+        File f = new File("C:\\Users\\Administrator\\Pictures\\A\\6.jpg");
+        uploadLocalFile(f.getPath(),"/A0/6.jpg",EncryptUtil.getFileMd5ByString(f));
 //        File f = new File("C:\\Users\\Administrator\\Downloads\\CLion-2022.2.win.zip");
 //        uploadLocalFile(f.getPath(),"/lsp/CLion-2022.2.win.zip",EncryptUtil.getFileMd5ByString(f));
+
+//        System.out.println(authTokens_CDN());
+
+//        System.out.println(refreshTask_CDN("https://file.onekdrug.com/A0/6.jpg"));
 
     }
 
