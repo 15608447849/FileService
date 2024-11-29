@@ -28,7 +28,7 @@ public class SuffixConst {
     private static String ergodicFilterSuffixArrayStr = "";
 
     // 图片处理
-    public static final String[] IMG_SUFFIX_ARRAY = new String[]{"-min","-ing","-org"};
+    public static final String[] IMG_SUFFIX_ARRAY = new String[]{"-lmt","-mrk","-min","-ing","-org"};
 
     // 服务需使用的默认后缀
     private static final Set<String> systemDefaultSuffixSet = new HashSet<>(Arrays.asList("js","html","css","bak","back","apk","version","url","json","dev","log"));

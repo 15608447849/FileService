@@ -55,7 +55,7 @@ dependencies {
 shadowJar {
     baseName = 'FILE-SERVICE'
     classifier = null
-    version = 2.0
+    version = 3.0
     manifest {
         attributes 'Main-Class': 'server.LunchServer'
     }

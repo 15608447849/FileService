@@ -27,7 +27,7 @@ import static server.comm.SuffixConst.*;
 @ServletAnnotation(name = "遍历文件列表",path = "/ergodic")
 public class FileErgodic extends CustomServlet {
 
-    private final static LRUCache<String, List<String>> cache = new LRUCache<>(Integer.MAX_VALUE,-1);
+    private final static LRUCache<String, List<String>> cache = new LRUCache<>(Integer.MAX_VALUE,30*1000);
 
     public static void removeCache(String path){
         int symIndex = path.lastIndexOf(".");

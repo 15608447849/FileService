@@ -12,6 +12,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import server.comm.RuntimeUtil;
+import server.icenode.ERPNodeClient;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -65,6 +66,8 @@ public class HWOBSServer {
     @PropertiesName("hwobs.cdn")
     public static String cdnURL;
 
+    private static String cdn_token = null;
+    private static long cdn_token_last_time = 0;
 
     private static ObsClient obsClient_bucket;
     private static ObsClient obsClient_info;
@@ -189,7 +192,7 @@ public class HWOBSServer {
                 listObjectsByPrefix(dirPath, request, list, isErgodicSubCatalog, null);
             }
         } catch (ObsException e) {
-            recodeException("[OBS]列举 ("+dirPath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+//            recodeException("[OBS]列举 ("+dirPath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
             list.clear();
         }
         return list;
@@ -297,9 +300,9 @@ public class HWOBSServer {
                isExist = true;
             }
         } catch (ObsException e) {
-            recodeException("[OBS]列举 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
+//            recodeException("[OBS]列举 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
         }catch (Exception ee){
-            Log4j.info("[OBS] 查询指定文件是否存在 "+ remotePath+"  错误 "+ ee);
+//            Log4j.info("[OBS] 查询指定文件是否存在 "+ remotePath+"  错误 "+ ee);
         }
         Log4j.info("[OBS] 查询指定文件是否存在: "+ remotePath+" 结果: "+ isExist);
         return isExist;
@@ -386,17 +389,18 @@ public class HWOBSServer {
 
             request.setProgressListener(status -> {
 
-                Log4j.info("[OBS]上传文件( "+localPath+" MD5: "+ localFileMD5 +" LEN: "+ getNetFileSizeDescription(file.length()) +" )"
+                /*Log4j.info("[OBS]上传文件( "+localPath+" MD5: "+ localFileMD5 +" LEN: "+ getNetFileSizeDescription(file.length()) +" )"
                         + " ,进度:" + status.getTransferPercentage()
                         + " ,均速: " + getNetFileSizeDescription((long)(Math.ceil(status.getAverageSpeed())))
                         + " ,用时: " +  TimeTool.formatDuring(System.currentTimeMillis() - time)
-                );
+                );*/
             });
 
             try {
                 CompleteMultipartUploadResult response = obsClient_upload.uploadFile(request);
                 Log4j.info("[OBS]上传文件("+remotePath+") 成功 大小: "+ RuntimeUtil.byteLength2StringShow(file.length()) +" 用时: "+ TimeTool.formatDuring(System.currentTimeMillis() - time)+" MD5: "+ localFileMD5);
                 refreshCDN("/" + remotePath);
+                ERPNodeClient.updateMediaIndex("/" + remotePath);
 
             } catch (ObsException e) {
                 recodeException("[OBS]上传文件("+remotePath+") 失败 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误", e);
@@ -418,7 +422,10 @@ public class HWOBSServer {
         return false;
     }
 
+
+
     private static String authTokens_CDN() {
+        if (cdn_token != null && System.currentTimeMillis()-cdn_token_last_time < 24*60*60*1000L) return cdn_token;
         String text = null;
         HttpURLConnection con = null;
         try {
@@ -428,6 +435,8 @@ public class HWOBSServer {
             con.setDoOutput(true);
             con.setDoInput(true);
             con.setUseCaches(false);
+            con.setConnectTimeout(30*1000);
+            con.setReadTimeout(30*1000);
             con.setRequestProperty("Charset", "UTF-8");
             con.setRequestProperty("Content-Type", "application/json");
 
@@ -455,8 +464,14 @@ public class HWOBSServer {
             osw.flush();
             osw.close();
 
-            if (con.getResponseCode() == 201)
+            if (con.getResponseCode() == 201){
                 text = con.getHeaderField("X-Subject-Token");
+                if (text!=null && text.length()>0){
+                    cdn_token = text;
+                    cdn_token_last_time = System.currentTimeMillis();
+                }
+            }
+
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -474,6 +489,8 @@ public class HWOBSServer {
             con.setDoOutput(true);
             con.setDoInput(true);
             con.setUseCaches(false);
+            con.setConnectTimeout(30*1000);
+            con.setReadTimeout(30*1000);
             con.setRequestProperty("Charset", "UTF-8");
             con.setRequestProperty("Content-Type", "application/json");
             con.setRequestProperty("X-Auth-Token", authTokens_CDN());
@@ -514,7 +531,10 @@ public class HWOBSServer {
 
     private static void refreshCDN(String remotePath) {
         if (cdnURL == null) return;
+
+        long time = System.currentTimeMillis();
         refreshTask_CDN(cdnURL + remotePath);
+        Log4j.info("[OBS]上传文件 刷新CDN: "+ remotePath +" 用时: "+  TimeTool.formatDuring(System.currentTimeMillis() - time));
     }
 
     //获取文件访问OBS URL
@@ -535,7 +555,7 @@ public class HWOBSServer {
             obsClient_info.setObjectAcl(bucketName,remotePath,AccessControlList.REST_CANNED_PRIVATE);
             return true;
         } catch (ObsException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
             recodeException("[OBS]私有化错误("+remotePath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
             return false;
         }
@@ -551,10 +571,10 @@ public class HWOBSServer {
             request.setObjectKey(remotePath);
             TemporarySignatureResponse response = obsClient_info.createTemporarySignature(request);
             String url = response.getSignedUrl();
-            System.out.println("授权路径: " + url);
+//            System.out.println("授权路径: " + url);
             int index = url.lastIndexOf("?");
             String str = url.substring(index);
-            System.out.println("授权字符串: " + str);
+//            System.out.println("授权字符串: " + str);
             return str;
         } catch (ObsException e) {
             recodeException("[OBS]临时授权错误("+remotePath+") 区域("+areaEndpointPrev+") 桶("+bucketName+") 错误",e);
@@ -587,13 +607,14 @@ public class HWOBSServer {
 
     public static void main(String[] args) throws Exception{
         File f = new File("C:\\Users\\Administrator\\Pictures\\A\\6.jpg");
-        uploadLocalFile(f.getPath(),"/A0/6.jpg",EncryptUtil.getFileMd5ByString(f));
+//        uploadLocalFile(f.getPath(),"/A0/6.jpg",EncryptUtil.getFileMd5ByString(f));
 //        File f = new File("C:\\Users\\Administrator\\Downloads\\CLion-2022.2.win.zip");
 //        uploadLocalFile(f.getPath(),"/lsp/CLion-2022.2.win.zip",EncryptUtil.getFileMd5ByString(f));
 
 //        System.out.println(authTokens_CDN());
 
 //        System.out.println(refreshTask_CDN("https://file.onekdrug.com/A0/6.jpg"));
+        System.out.println(refreshTask_CDN("https://file.onekdrug.com/media/drug/1636532817000001026/0.jpg?77"));
 
     }
 

@@ -115,7 +115,7 @@ public class HWOBSAgent {
                     uploadFileToOBS(list);
                 }else{
                     synchronized (TYPE){
-                        TYPE.wait(600 * 1000);
+                        TYPE.wait(3 * 60 * 1000);
                     }
                 }
             }catch (Exception e){
@@ -128,7 +128,7 @@ public class HWOBSAgent {
         try{
 
             int total = list.size();
-            Log4j.info("OBS 本次上传文件数: "+ total );
+            Log4j.info("[OBS]上传文件 数量: "+ total );
 
             long _stime = System.currentTimeMillis();
             String _sTimeStr = TimeTool.date_yMd_Hms_2Str(new Date());
@@ -138,14 +138,14 @@ public class HWOBSAgent {
 
                 Callable<Boolean> callback = () -> {
                     // 上传执行
-                    boolean removeQueue = executeUploadFileToOBS(it.value,it.attach);// value=文件本地路径, attach=文件MD5
-                    if (removeQueue){
+                    boolean uploadRes = executeUploadFileToOBS(it.value,it.attach);// value=文件本地路径, attach=文件MD5
+                    if (uploadRes){
                         removeListValue(TYPE, it.value);// 从数据库列表删除
                     }
-//                    boolean isDelRes = removeListValue(TYPE, it.value);// 从数据库列表删除
-//                    if (!removeQueue || !isDelRes)  Log4j.info("OBS上传=" + removeQueue+" 移除队列=" + isDelRes);
+                    boolean isDelRes = removeListValue(TYPE, it.value);// 从数据库列表删除
+                    if (!uploadRes || !isDelRes)  Log4j.info("OBS上传文件 上传结果:" + uploadRes+" 移除队列=" + isDelRes);
 
-                    return removeQueue;
+                    return uploadRes;
                 };
 
                 futures.add(pool.submit(callback));
@@ -164,7 +164,7 @@ public class HWOBSAgent {
             long _etime = System.currentTimeMillis();
 
             Log4j.info(
-                    "OBS 上传完成 " +
+                    "OBS 上传文件完成 " +
                             " 开始时间: "+ _sTimeStr +
                             " 成功/总数: "+ (total - failIndex)+"/"+ total +
                             " 用时: "+  TimeTool.formatDuring(_etime - _stime) );

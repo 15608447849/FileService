@@ -3,20 +3,25 @@ package server.servlet.beans;
 import bottle.properties.abs.ApplicationPropertiesBase;
 import bottle.properties.annotations.PropertiesFilePath;
 import bottle.properties.annotations.PropertiesName;
-import bottle.util.FileTool;
-import bottle.util.GoogleGsonUtil;
-import bottle.util.Log4j;
+import bottle.util.*;
+import net.coobird.thumbnailator.Thumbnails;
+import net.coobird.thumbnailator.geometry.Positions;
 import server.hwobs.HWOBSAgent;
 import server.servlet.imps.FileErgodic;
 import server.sqlites.tables.SQLiteFileTable;
 import server.undertow.CustomResourceManager;
 import server.undertow.WebServer;
 
+import javax.imageio.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.awt.image.RenderedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import static server.comm.OperationUtil.*;
 import static server.comm.SuffixConst.IMG_SUFFIX_ARRAY;
@@ -177,15 +182,15 @@ public class ImageOperation{
                 filePathAll.add(imagePath);
                 // 检查是否是图片
                 if (isImageType(image)) {
-                    //1. 图片最大限制处理
+                    // 图片最大限制处理
                     maxImageLimitHandler();
-                    //2. 是否添加水印
+                    // 水印
                     logoHandler();
-                    //3. 是否添加最小比例图
+                    // 缩略图
                     minScaleExistHandler();
-                    //4. 图片压缩处理
+                    // 图片压缩
                     imageCompressHandler();
-                    //5. 裁剪处理
+                    // 裁剪处理
                     tailorHandler();
                 }
             }
@@ -195,11 +200,14 @@ public class ImageOperation{
         return filePathAll;
     }
 
-    // 1 图片最大限制
+    // 图片最大限制
     private void maxImageLimitHandler() {
         try {
             if (maxImageLimit!=null && maxImageLimit[0] > 0 && maxImageLimit[1] > 0){
-                image = imageMaxSizeHandle(maxImageLimit,image);
+                int width = maxImageLimit[0];
+                int height = maxImageLimit[1];
+                String image_limit_path = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[0]);
+                boolean f = imageMaxSizeHandle(width,height,image,new File(image_limit_path));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -208,63 +216,73 @@ public class ImageOperation{
 
     //2 水印
     private void logoHandler() {
-        if (isLogo){
-            try {
-                //文本水印
-                image = markImageByText(logoText,image, logoTextRotate,parseToColor(logoTextColor), logoTextAlpha, logoTextPosition);
-                //图片水印
-                image = markImageByIcon(logoIcon,image, logoIconAlpha, logoIconRotate, logoIconPosition);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        if (!isLogo) return;
+
+        try {
+            //文本水印
+            String image_mark_path = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[1]);
+            File mark = new File(image_mark_path);
+            boolean f = markImageByText(image, mark,
+                    logoText,logoTextRotate, parseToColor(logoTextColor), logoTextAlpha, logoTextPosition);
+            if (f) image = mark;
+
+            //图片水印
+            f = markImageByIcon(image, mark, logoIcon, logoIconAlpha, logoIconRotate, logoIconPosition);
+            if (f) image = mark;
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
     }
 
-    //3 最小比例
+    //最小比例(缩略图)
     private void minScaleExistHandler() {
-        if (minScaleExist) {
-            try {
-                String image_min = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[0]);
-                boolean isSuccess = imageCompress_scale_min(image,new File(image_min));
-                if (isSuccess) filePathAll.add(image_min);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        if (!minScaleExist) return;
+
+        try {
+            String min = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[2]);
+            boolean isSuccess = imageCompress_scale_min(image,new File(min));
+            if (isSuccess) filePathAll.add(min);
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     //4 压缩
     private void imageCompressHandler() {
-        if (isCompress) {
-            try {
-                String image_ing = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[1]);
+        if (!isCompress)  return;
+
+        try {
+            String image_ing = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[1]);
+
+            File ing = new File(image_ing);// 临时文件
+
+            long time = System.currentTimeMillis();
+            boolean isSuccess = imageCompressUseTinypng(image,ing,spSize);
+            Log4j.info("图片 "+ image
+                    + " 压缩"+  ( isSuccess ? "成功":"失败")
+                    + " 耗时:" + TimeTool.formatDuring( System.currentTimeMillis() - time )
+                    + " 变化: "+image.length()+" -> "+ing.length());
+
+            if (isSuccess) {
+                //重命名
                 String image_org = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[2]);
-
-                File temp = new File(image_ing);// 压缩中的临时文件
-
-                long time = System.currentTimeMillis();
-                boolean isSuccess = imageCompressUseTinypng(image,temp,spSize);
-                Log4j.info("图片("+ image + ")压缩"+  ( isSuccess ? "成功":"失败") +",耗时:" + (System.currentTimeMillis() - time )+" 毫秒" +
-                        ",压缩变化: "+image.length()+" -> "+temp.length());
-
-                if (isSuccess) {
-                    //重命名
-                    FileTool.rename(image,new File(image_org)) ; // 当前文件->添加-org
-//                    if (image.exists()) {
-//                        if (!image.delete())  return;
-//                    }
-                    FileTool.rename(temp,image) ; // 临时文件->当前文件
-                    filePathAll.add(image_org);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+                FileTool.rename(image,new File(image_org)) ; // 当前文件->添加-org
+                FileTool.rename(ing,image) ; // 临时文件->当前文件
+                filePathAll.add(image_org);
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
     }
 
-    //5 指定大小裁剪
+    // 制作指定大小裁剪图片
     private void tailorHandler() {
         if (tailorStr==null) return;
+
         try {
             String[] tailorArr = tailorStr.split(",");
             for (String sizeStr : tailorArr) {
@@ -274,9 +292,7 @@ public class ImageOperation{
                 int w = Integer.parseInt(sizeArr[0]);
                 int h = Integer.parseInt(sizeArr[1]);
                 boolean isSuccess = imageResizeByGoogle(image,dest,w,h);
-                if (isSuccess){
-                    filePathAll.add(image_tailor);
-                }
+                if (isSuccess) filePathAll.add(image_tailor);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -294,6 +310,63 @@ public class ImageOperation{
         t_read.setDaemon(true);
         t_read.setName("img-handle-read-"+t_read.getId());
         t_read.start();
+
+    }
+
+    public static void main(String[] args) throws Exception {
+
+         File image = new File("D:\\A_Java\\JavaProjects\\IDEAWORK\\FileService\\file\\media\\drug\\1653466937000001026\\1.jpg");
+         File dest = new File("D:\\A_Java\\JavaProjects\\IDEAWORK\\FileService\\file\\media\\drug\\1653466937000001026\\out.jpg");
+        //文本水印
+        markImageByText(image,dest,logoText, logoTextRotate, parseToColor(logoTextColor), logoTextAlpha, logoTextPosition);
+//        markImageByIcon("D:\\A_Java\\JavaProjects\\IDEAWORK\\FileService\\file\\media\\drug\\1653466937000001026\\1.jpg", image, logoIconAlpha, logoIconRotate, logoIconPosition);
+
+
+     /*
+        String watermarkText = "Watermark111111111111";
+        File inputImageFile = new File("D:\\A_Java\\JavaProjects\\IDEAWORK\\FileService\\file\\media\\drug\\1653466937000001026\\8.jpg"); // 输入图片路径
+        File outputImageFile = new File("D:\\A_Java\\JavaProjects\\IDEAWORK\\FileService\\file\\media\\drug\\1653466937000001026\\OUT_111.jpg"); // 输出图片路径
+
+        BufferedImage  inputImage = ImageIO.read(inputImageFile);
+        int width = inputImage.getWidth();
+        int height = inputImage.getHeight();
+
+        Graphics2D g2d = (Graphics2D) inputImage.getGraphics();
+        AlphaComposite alphaChannel = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f); // 设置水印透明度
+        g2d.setComposite(alphaChannel);
+        g2d.setColor(Color.BLUE); // 设置水印颜色
+        g2d.setFont(new Font("Arial", Font.BOLD, 30)); // 设置水印字体和大小
+        g2d.drawString(watermarkText, 0, height - 500); // 在图片上绘制水印文字
+        g2d.dispose();
+
+        ImageIO.write(inputImage, "jpg", outputImageFile); // 输出图片
+*/
+        // 设置压缩参数
+//        ImageWriter jpegWriter = ImageIO.getImageWritersByFormatName("jpg").next();
+//        ImageWriteParam jpegWriteParam = jpegWriter.getDefaultWriteParam( );
+//        jpegWriteParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+//        jpegWriteParam.setCompressionQuality(1.0f); // 设置压缩质量，1.0为最高质
+//
+//        File compressedImageFile = new File(outputImageFile.getPath());
+//        IIOImage image = new IIOImage(inputImage, null, null);
+//        jpegWriter.setOutput(ImageIO.createImageOutputStream(compressedImageFile));
+//        jpegWriter.write(null, image, jpegWriteParam);
+//        jpegWriter.dispose();
+
+        /*
+        File inputImageFile = new File("D:\\A_Java\\JavaProjects\\IDEAWORK\\FileService\\file\\media\\drug\\1653466937000001026\\9.jpg"); // 输入图片路径
+        File outputImageFile = new File("D:\\A_Java\\JavaProjects\\IDEAWORK\\FileService\\file\\media\\drug\\1653466937000001026\\OUT_111.jpg"); // 输出图片路径
+        BufferedImage  inputImage = ImageIO.read(inputImageFile);
+        int width = inputImage.getWidth();
+        int height = inputImage.getHeight();
+        Thumbnails.of(inputImageFile)
+                .size(width,height)
+//
+                .watermark(Positions.BOTTOM_RIGHT,
+                        ImageIO.read(new File("D:\\A_Java\\JavaProjects\\IDEAWORK\\FileService\\file\\media\\drug\\1653466937000001026\\111.jpg")), 0.5f) // 设置水印
+                .outputQuality(1.0) // 输出质量
+                .toFile(outputImageFile);
+*/
 
     }
 
