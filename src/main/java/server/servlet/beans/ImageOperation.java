@@ -183,7 +183,7 @@ public class ImageOperation{
                 // 检查是否是图片
                 if (isImageType(image)) {
                     // 图片压缩
-                    1();
+                    imageCompressHandler();
                     // 图片最大限制处理
                     maxImageLimitHandler();
                     // 水印
