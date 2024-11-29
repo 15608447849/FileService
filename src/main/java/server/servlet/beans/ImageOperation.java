@@ -182,14 +182,14 @@ public class ImageOperation{
                 filePathAll.add(imagePath);
                 // 检查是否是图片
                 if (isImageType(image)) {
+                    // 图片压缩
+                    1();
                     // 图片最大限制处理
                     maxImageLimitHandler();
                     // 水印
                     logoHandler();
                     // 缩略图
                     minScaleExistHandler();
-                    // 图片压缩
-                    imageCompressHandler();
                     // 裁剪处理
                     tailorHandler();
                 }
@@ -255,7 +255,7 @@ public class ImageOperation{
         if (!isCompress)  return;
 
         try {
-            String image_ing = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[1]);
+            String image_ing = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[3]);
 
             File ing = new File(image_ing);// 临时文件
 
@@ -268,7 +268,7 @@ public class ImageOperation{
 
             if (isSuccess) {
                 //重命名
-                String image_org = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[2]);
+                String image_org = filePathAndStrToSuffix(imagePath,IMG_SUFFIX_ARRAY[4]);
                 FileTool.rename(image,new File(image_org)) ; // 当前文件->添加-org
                 FileTool.rename(ing,image) ; // 临时文件->当前文件
                 filePathAll.add(image_org);
