@@ -37,6 +37,8 @@ public class FileErgodic extends CustomServlet {
         }
         String remotePath = checkDirPath(path);
         cache.remove(remotePath);
+        Log4j.info("遍历 移除缓存: " + remotePath );
+
     }
 
     @Override
@@ -102,7 +104,10 @@ public class FileErgodic extends CustomServlet {
 
         // 缓存获取
         List<String> respList = cache.get(remotePath);
-        if(respList != null) return respList;
+        if(respList != null) {
+            Log4j.info("遍历 "+ remotePath+" 缓存获取: "+respList);
+            return respList;
+        }
 
         respList = new ArrayList<>();
         int localFileSize = 0;

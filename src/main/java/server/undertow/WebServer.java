@@ -85,7 +85,8 @@ public class WebServer {
         // 设置临时文件
         FileUpLoad.setTemporaryFolder(1024*10,1024 * 1024 * 1024 * 5L,temporaryFolder);
 
-        Log4j.info("本地文件根目录: "+ rootFolderStr +" 临时目录: "+ temporaryFolder.getCanonicalPath());
+        Log4j.info("本地文件根目录: "+ rootFolderStr
+                +" 本地文件临时目录: "+ temporaryFolder.getCanonicalPath());
     }
 
     //临时文件目录

@@ -74,7 +74,7 @@ public class FileUploadOperation {
     private UploadFileItemResult saveFile(FileItem fileItem, String specifyPath, String specifyFileName) {
         UploadFileItemResult uploadResult = new UploadFileItemResult();
         try {
-            //本地跟目录路径
+            //本地根目录路径
             final String rootPath = WebServer.rootFolderStr;
             //url访问 相对全路径
             final String localRelativePath = specifyPath + specifyFileName;

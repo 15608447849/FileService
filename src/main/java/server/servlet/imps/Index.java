@@ -28,7 +28,7 @@ import static server.undertow.AccessControlAllowOriginFilter.*;
 
 // 返回目标外网IP
 
-@ServletAnnotation(name = "首页",path = "/")
+//@ServletAnnotation(name = "首页",path = "/")
 public class Index extends CustomServlet {
 
     @Override

@@ -53,7 +53,7 @@ public class GenerateZip extends CustomServlet {
 
             String zipLocalPath  = compressZip(compressDirt);
 
-            String url = zipLocalPath.replace(WebServer.rootFolderStr,WebServer.domain);
+            String url = zipLocalPath.replace(WebServer.rootFolderStr,WebServer.domain).replace('\\', '/');
 
             Log4j.info("生成ZIP文件: " + zipLocalPath +" ,耗时: "+ (System.currentTimeMillis() - time)+" 毫秒 URL = " + url);
 
@@ -76,7 +76,7 @@ public class GenerateZip extends CustomServlet {
         String storageDirPath = WebServer.GET_TEMP_FILE_DIR()+ "/zip/";
 
         List<File> fileList = checkPaths(paths,storageDirPath);
-        if (fileList.size() > 0){
+        if (!fileList.isEmpty()){
 
             StringBuilder cacheKey = new StringBuilder();
             for (File f : fileList) {

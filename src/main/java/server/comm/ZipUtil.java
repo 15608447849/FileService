@@ -5,6 +5,7 @@ import bottle.util.Log4j;
 import server.hwobs.HWOBSAgent;
 import server.undertow.WebServer;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -39,6 +40,10 @@ public class ZipUtil {
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
+            if (urlStr.startsWith("https")){
+                conn = (HttpsURLConnection) url.openConnection();
+            }
+            Log4j.info("httpUrlToLocalFile " +conn );
             conn.setConnectTimeout(60*1000);
 
             if (reqProp!=null){
@@ -48,6 +53,8 @@ public class ZipUtil {
             }
 
             String fileName =  System.currentTimeMillis() + "-" +urlStr.substring(urlStr.lastIndexOf("/")+1);
+            File dir = new File(storageDir);
+            if (!dir.exists()) dir.mkdirs();
 
             File localFile = new File(storageDir,fileName);
             try(InputStream in = conn.getInputStream()){
@@ -61,7 +68,7 @@ public class ZipUtil {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log4j.error("httpUrlToLocalFile错误",e);
         }finally {
             if(conn!=null){
                 conn.disconnect();

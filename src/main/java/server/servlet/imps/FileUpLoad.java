@@ -95,5 +95,12 @@ public class FileUpLoad extends CustomServlet {
         }
     }
 
-    protected void subHook(HttpServletRequest req, List<UploadFileItemResult> resultList){ }
+    protected void subHook(HttpServletRequest req, List<UploadFileItemResult> resultList){
+        for (int i = 0; i < resultList.size() ; i++){
+            UploadFileItemResult it = resultList.get(i);
+            CustomResourceManager.removeCache(it.relativePath);// 移除缓存
+            FileErgodic.removeCache(it.relativePath);//移除缓存
+        }
+
+    }
 }
